@@ -20,11 +20,11 @@ from tf.transformations import quaternion_from_euler
 ## Import msgs and srvs ##
 from geometry_msgs.msg import PoseStamped
 from trajectory_msgs.msg import JointTrajectoryPoint
-from moveit_msgs.msg import DisplayTrajectory, Grasp, PlaceLocation
+from moveit_msgs.msg import DisplayTrajectory, Grasp, PlaceLocation, Constraints, OrientationConstraint
 from moveit_msgs.srv import ApplyPlanningScene, ApplyPlanningSceneRequest, GetPlanningScene
 
 legoWidth = 0.04
-openOffSet = 0
+openOffSet = 0.01
 closedOffset = 0.03
 x_start = 0.5
 y_start = 0
@@ -33,6 +33,10 @@ z_start = 0
 x_end = 0.6
 y_end = 0
 z_end = 0.1
+
+neutral_position = [0.3, -5.22e-12, 0.59]
+neutral_orientation = [0.92387953251, -0.382683432368, -6.08473427069e-14, 3.77292876593e-12]
+
 def openGripper(posture):
     ## - BEGIN_SUB_TUTORIAL open_gripper- ##
     ## Add both finger joints of panda robot ##
@@ -43,10 +47,9 @@ def openGripper(posture):
     ## Set them as open, wide enough for the object to fit. ##
     posture.points = [JointTrajectoryPoint()]
     posture.points[0].positions = [float for i in range(2)]
-    posture.points[0].positions[0] = 0.02
-    posture.points[0].positions[1] = 0.02
+    posture.points[0].positions[0] = legoWidth + openOffSet
+    posture.points[0].positions[1] = legoWidth + openOffSet
     posture.points[0].time_from_start = rospy.Duration(0.5)
-    print("opened")
     ## - END_SUB_TUTORIAL - ##
 
 
@@ -60,12 +63,36 @@ def closedGripper(posture):
     ## Set them as closed. ##
     posture.points = [JointTrajectoryPoint()]
     posture.points[0].positions = [float for i in range(2)]
-    posture.points[0].positions[0] = 0.00
-    posture.points[0].positions[1] = 0.00
+    posture.points[0].positions[0] = legoWidth - closedOffset
+    posture.points[0].positions[1] = legoWidth - closedOffset
     posture.points[0].time_from_start = rospy.Duration(0.5)
     print("closed")
     ## - END_SUB_TUTORIAL - ##
 
+def go_to_neutral_pose(move_group):
+    waypoints = []
+    # scale = 1.0
+    wpose = move_group.get_current_pose().pose
+    waypoints.append(copy.deepcopy(wpose))
+    wpose.position.z = neutral_position[2]
+    wpose.position.x = neutral_position[0]
+    waypoints.append(copy.deepcopy(wpose))
+    wpose.position.y = neutral_position[1]
+
+    #wpose.orientation.x = neutral_orientation[0]
+    #wpose.orientation.y = neutral_orientation[1]
+    #wpose.orientation.z = neutral_orientation[2]
+    #wpose.orientation.w = neutral_orientation[3]
+
+
+    # wpose.position.z = z_start - 0.035
+    waypoints.append(copy.deepcopy(wpose))
+    (plan, fraction) = move_group.compute_cartesian_path(
+        waypoints,
+        0.01,
+        0.0
+    )
+    move_group.execute(plan, wait=True)
 
 def pick(move_group):
     waypoints = []
@@ -73,8 +100,11 @@ def pick(move_group):
     wpose = move_group.get_current_pose().pose
     wpose.position.x = x_start
     waypoints.append(copy.deepcopy(wpose))
-    wpose.position.z = z_start + 0.105
+    wpose.position.z = z_start + 0.105 + 0.01
     # wpose.position.z = z_start - 0.035
+    waypoints.append(copy.deepcopy(wpose))
+
+    wpose.position.y = y_start
     waypoints.append(copy.deepcopy(wpose))
 
     (plan, fraction) = move_group.compute_cartesian_path(
@@ -85,6 +115,7 @@ def pick(move_group):
     move_group.execute(plan, wait=True)
     #planning_scene_interface.attach_box(eef_link, 'object')
     grasps = Grasp()
+
     grasps.grasp_pose.header.frame_id = "panda_link0"
     grasps.grasp_pose.pose.orientation.x = move_group.get_current_pose().pose.orientation.x
     grasps.grasp_pose.pose.orientation.y = move_group.get_current_pose().pose.orientation.y
@@ -95,20 +126,34 @@ def pick(move_group):
     grasps.grasp_pose.pose.position.y = move_group.get_current_pose().pose.position.y
     grasps.grasp_pose.pose.position.z = move_group.get_current_pose().pose.position.z
 
-    grasps.pre_grasp_approach.direction.header.frame_id = "panda_link0"
-    grasps.pre_grasp_approach.direction.vector.x = 0.1
-    grasps.pre_grasp_approach.min_distance = 0
-    grasps.pre_grasp_approach.desired_distance = 0.001
+    grasps.pre_grasp_approach.direction.header.frame_id = "panda_link8"
+    grasps.pre_grasp_approach.direction.vector.x = 0.0
+    grasps.pre_grasp_approach.direction.vector.y = 0.0
+    grasps.pre_grasp_approach.direction.vector.z = 1
+    grasps.pre_grasp_approach.min_distance = 0.0
+    grasps.pre_grasp_approach.desired_distance = 0.01
 
     grasps.post_grasp_retreat.direction.header.frame_id = "panda_link0"
-    grasps.post_grasp_retreat.direction.vector.z = 1.0
-    grasps.post_grasp_retreat.min_distance = 0.1
-    grasps.post_grasp_retreat.desired_distance = 0.25
-
+    grasps.post_grasp_retreat.direction.vector.x = 0.0
+    grasps.post_grasp_retreat.direction.vector.x = 0.0
+    grasps.post_grasp_retreat.direction.vector.z = 1
+    grasps.post_grasp_retreat.min_distance = 0.0
+    grasps.post_grasp_retreat.desired_distance = 0.01
+    openGripper(grasps.pre_grasp_posture)
     closedGripper(grasps.grasp_posture)
     #move_group.attach_object('object')
+
     move_group.set_support_surface_name("table")
+    print(move_group.get_current_pose().pose.position.x)
+    print(move_group.get_current_pose().pose.position.y)
+    print(move_group.get_current_pose().pose.position.z)
     move_group.pick("object", grasps)
+    print("")
+    print(move_group.get_current_pose().pose.position.x)
+    print(move_group.get_current_pose().pose.position.y)
+    print(move_group.get_current_pose().pose.position.z)
+
+
 
 
 def place(group):
@@ -241,15 +286,28 @@ if __name__ == "__main__":
 
     ## Add collision objects ##
     addCollisionObjects(planning_scene_interface)
+    """
+    print(move_group.get_current_pose().pose.position.x)
+    print(move_group.get_current_pose().pose.position.y)
+    print(move_group.get_current_pose().pose.position.z)
+    print(move_group.get_current_pose().pose.orientation.x)
+    print(move_group.get_current_pose().pose.orientation.y)
+    print(move_group.get_current_pose().pose.orientation.z)
+    print(move_group.get_current_pose().pose.orientation.w)
+    """
+
 
     ## Wait a bit ##
     rospy.sleep(1.0)
 
+    go_to_neutral_pose(move_group)
     ## Pick ##
     pick(move_group)
 
     ## Wait a bit ##
     rospy.sleep(1.0)
+
+    go_to_neutral_pose(move_group)
 
     ## Place ##
    # place(move_group)
