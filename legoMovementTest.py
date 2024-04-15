@@ -27,20 +27,24 @@ from trajectory_msgs.msg import JointTrajectoryPoint
 from moveit_msgs.msg import DisplayTrajectory, Grasp, PlaceLocation, Constraints, OrientationConstraint
 from moveit_msgs.srv import ApplyPlanningScene, ApplyPlanningSceneRequest, GetPlanningScene
 
-legoWidth = 0.04
-openOffSet = 0.01
-closedOffset = 0.03
-x_start = 0.31947757434680796
-y_start = 0.38545006318392894
-z_start = -0.018134027050834903
+legoWidth = 0.0314
+legoHeight = 0.019
+openOffSet = 0.005
+closedOffset = 0.001
+x_start = 0.22313862587754232
+y_start = 0.43369528155501386
+z_start = -0.017351559286898043
 
-x_end = -0.04203614007317653
-y_end = 0.45129553432209324
-z_end = -0.019330159003852404
+x_end = 0.20501066481555896
+y_end = 0.561893957425897
+z_end = 0.012373272999947768
+
+eef_height = 0.111
 
 neutral_position = [0.3, -5.22e-12, 0.59]
 neutral_orientation = [0.92387953251, -0.382683432368, -6.08473427069e-14, 3.77292876593e-12]
 
+"""
 def openGripper(posture):
     ## - BEGIN_SUB_TUTORIAL open_gripper- ##
     ## Add both finger joints of panda robot ##
@@ -71,42 +75,19 @@ def closedGripper(posture):
     posture.points[0].positions[1] = legoWidth - closedOffset
     posture.points[0].time_from_start = rospy.Duration(0.5)
     ## - END_SUB_TUTORIAL - ##
-
-def go_to_neutral_pose(move_group, pose):
+"""
+    
+def go_to_neutral_pose(move_group):
     waypoints = []
     # scale = 1.0
     wpose = move_group.get_current_pose().pose
-    wpose.position.z = pose[2]
+    wpose.position.z = pose.pose.position.z
     waypoints.append(copy.deepcopy(wpose))
-    wpose.position.x = pose[0]
+    wpose.position.x = pose.pose.position.x
     waypoints.append(copy.deepcopy(wpose))
-    wpose.position.y = pose[1]
+    wpose.position.y = pose.pose.position.y
     waypoints.append(copy.deepcopy(wpose))
-
-    # wpose.position.z = z_start - 0.035
     waypoints.append(copy.deepcopy(wpose))
-    (plan, fraction) = move_group.compute_cartesian_path(
-        waypoints,
-        0.01,
-        0.0
-    )
-    plan = move_group.retime_trajectory(moveit_commander.RobotCommander().get_current_state(), plan, velocity_scaling_factor=0.25) # Per rallentare il robot
-    move_group.execute(plan, wait=True)
-
-def go_to_neutral_pose2(move_group):
-
-    waypoints = []
-    #scale = 1.0
-    wpose = move_group.get_current_pose().pose
-    wpose.position.z = neutral_position[2]
-    waypoints.append(copy.deepcopy(wpose))
-    wpose.position.x = x_end
-    waypoints.append(copy.deepcopy(wpose))
-    wpose.position.y = y_end
-    waypoints.append(copy.deepcopy(wpose))
-    #wpose.position.z = z_end + 0.105 + 0.01
-
-
     (plan, fraction) = move_group.compute_cartesian_path(
         waypoints,
         0.01,
@@ -115,33 +96,57 @@ def go_to_neutral_pose2(move_group):
     plan = move_group.retime_trajectory(moveit_commander.RobotCommander().get_current_state(), plan, velocity_scaling_factor=0.25) # Per rallentare il robot
     move_group.execute(plan, wait=True)
     joint_goal = move_group.get_current_joint_values()
-    joint_goal[0] = math.pi/2
+    joint_goal[0] = start_joint_goal[0]
     joint_goal[1] = start_joint_goal[1]
     joint_goal[2] = start_joint_goal[2]
     joint_goal[3] = start_joint_goal[3]
     joint_goal[4] = start_joint_goal[4]
     joint_goal[5] = start_joint_goal[5]
     joint_goal[6] = start_joint_goal[6]
-
-
-    move_group.set_max_velocity_scaling_factor(0.1)
     move_group.go(joint_goal, wait=True)
 
 
 
+def go_to_starting_pose(move_group):
+    joint_goal = move_group.get_current_joint_values()
+    joint_goal[0] = start_joint_goal[0] + math.pi/2
+    joint_goal[1] = start_joint_goal[1]
+    joint_goal[2] = start_joint_goal[2]
+    joint_goal[3] = start_joint_goal[3]
+    joint_goal[4] = start_joint_goal[4]
+    joint_goal[5] = start_joint_goal[5]
+    joint_goal[6] = start_joint_goal[6] + math.pi /2
+
+    move_group.go(joint_goal, wait=True)
+
+def go_to_neutral_pose2(move_group):
+    waypoints = []
+    # scale = 1.0
+    wpose = move_group.get_current_pose().pose
+    wpose.position.z = wpose.position.z + 0.05
+    waypoints.append(copy.deepcopy(wpose))
+    # wpose.position.z = z_end + 0.105 + 0.01
+
+    (plan, fraction) = move_group.compute_cartesian_path(
+        waypoints,
+        0.01,
+        0.0
+    )
+    plan = move_group.retime_trajectory(moveit_commander.RobotCommander().get_current_state(), plan,
+                                        velocity_scaling_factor=0.25)  # Per rallentare il robot
+    move_group.execute(plan, wait=True)
+
+
 def pick(move_group):
     waypoints = []
-    #scale = 1.0
+    # scale = 1.0
     wpose = move_group.get_current_pose().pose
     wpose.position.x = x_start
     waypoints.append(copy.deepcopy(wpose))
     wpose.position.y = y_start
     waypoints.append(copy.deepcopy(wpose))
-    wpose.position.z = z_start + 0.105 + 0.01
-    # wpose.position.z = z_start - 0.035
-    waypoints.append(copy.deepcopy(wpose))
-
-    wpose.position.y = y_start
+    wpose.position.z = z_start + legoHeight + eef_height
+    rospy.sleep(10)
     waypoints.append(copy.deepcopy(wpose))
 
     (plan, fraction) = move_group.compute_cartesian_path(
@@ -149,10 +154,11 @@ def pick(move_group):
         0.01,
         0.0
     )
-    plan = move_group.retime_trajectory(moveit_commander.RobotCommander().get_current_state(), plan, velocity_scaling_factor=0.25) # Per rallentare il robot
+    plan = move_group.retime_trajectory(moveit_commander.RobotCommander().get_current_state(), plan,
+                                        velocity_scaling_factor=0.25)  # Per rallentare il robot
     move_group.execute(plan, wait=True)
-    #move_gripper()
-    #planning_scene_interface.attach_box(eef_link, 'object')
+    close_gripper()
+    # planning_scene_interface.attach_box(eef_link, 'object')
     """
     grasps = Grasp()
 
@@ -193,9 +199,9 @@ def pick(move_group):
     """
 
 
-def move_gripper():
+def open_gripper():
     # Creates the SimpleActionClient, passing the type of the action
-    client = actionlib.SimpleActionClient('/franka_gripper/move', franka_gripper.msg.MoveAction)
+    client = actionlib.SimpleActionClient('/franka_gripper/open', franka_gripper.msg.GraspAction)
 
     # Waits until the action server has started up and started
     # listening for goals.
@@ -203,7 +209,7 @@ def move_gripper():
     client.wait_for_server()
 
     # Creates a goal to send to the action server.
-    goal = franka_gripper.msg.MoveGoal(width=0, speed=0.25)
+    goal = franka_gripper.msg.GraspGoal(width=legoWidth + openOffSet, speed=0.02)
     # goal.width = 0.022
     # goal.speed = 1.0
 
@@ -211,20 +217,42 @@ def move_gripper():
     client.send_goal(goal)
     # Waits for the server to finish performing the action.
     client.wait_for_result()
-    print("Debug 3")
     # Prints out the result of executing the action
     return client.get_result()  # A move result
+
+
+def close_gripper():
+    # Creates the SimpleActionClient, passing the type of the action
+    client = actionlib.SimpleActionClient('/franka_gripper/close', franka_gripper.msg.GraspAction)
+
+    # Waits until the action server has started up and started
+    # listening for goals.
+
+    client.wait_for_server()
+
+    # Creates a goal to send to the action server.
+    goal = franka_gripper.msg.GraspGoal(width=legoWidth - closedOffset, speed=0.02, force=1)
+    # goal.width = 0.022
+    # goal.speed = 1.0
+
+    # Sends the goal to the action server.
+    client.send_goal(goal)
+    # Waits for the server to finish performing the action.
+    client.wait_for_result()
+    # Prints out the result of executing the action
+    return client.get_result()  # A move result
+
 
 def place(group):
     print("sto provando a piazzare")
     waypoints = []
-    #scale = 1.0
+    # scale = 1.0
     wpose = move_group.get_current_pose().pose
     wpose.position.x = x_end
     waypoints.append(copy.deepcopy(wpose))
     wpose.position.y = y_end
     waypoints.append(copy.deepcopy(wpose))
-    wpose.position.z = z_end + 0.105 + 0.01
+    wpose.position.z = z_end + eef_height
     waypoints.append(copy.deepcopy(wpose))
 
     (plan, fraction) = move_group.compute_cartesian_path(
@@ -232,9 +260,11 @@ def place(group):
         0.01,
         0.0
     )
-    plan = move_group.retime_trajectory(moveit_commander.RobotCommander().get_current_state(), plan, velocity_scaling_factor=0.25) # Per rallentare il robot
+    plan = move_group.retime_trajectory(moveit_commander.RobotCommander().get_current_state(), plan,
+                                        velocity_scaling_factor=0.25)  # Per rallentare il robot
     move_group.execute(plan, wait=True)
-    #planning_scene_interface.remove_attached_object('object')
+    open_gripper()
+    # planning_scene_interface.remove_attached_object('object')
 
 
 def allow_contact(obj):
@@ -272,17 +302,17 @@ def addCollisionObjects(planning_scene_interface):
     collision_object_sizes[0] = (0.032, 0.032, 0.024)  # Box size
 
     ## Define the pose of the object. ##
-    collision_objects[0].pose.position.x = x_start+1
+    collision_objects[0].pose.position.x = x_start + 1
     collision_objects[0].pose.position.y = y_start
     collision_objects[0].pose.position.z = z_start
 
     ## Define the table ##
     collision_objects_names[1] = "table"
     collision_objects[1].header.frame_id = "panda_link0"
-    collision_object_sizes[1] = (1, 1, 0.2)
+    collision_object_sizes[1] = (1, 1, 0.02)
     collision_objects[1].pose.position.x = 0
     collision_objects[1].pose.position.y = 0
-    collision_objects[1].pose.position.z = -0.12
+    collision_objects[1].pose.position.z = -0.04
 
     ## Add collision objects to scene ##
 
@@ -291,9 +321,10 @@ def addCollisionObjects(planning_scene_interface):
     ):
         planning_scene_interface.add_box(name=name, pose=pose, size=size)
 
-    #planning_scene_interface.add_box(name=collision_objects_names[0], pose=collision_objects[0], size=collision_object_sizes[0])
+    # planning_scene_interface.add_box(name=collision_objects_names[0], pose=collision_objects[0], size=collision_object_sizes[0])
     allow_contact('object')
     allow_contact('table')
+
 
 if __name__ == "__main__":
 
@@ -328,7 +359,7 @@ if __name__ == "__main__":
         robot_description="robot_description", ns="/"
     )
     get_planning_scene = rospy.ServiceProxy('/get_planning_scene', GetPlanningScene)
-    set_planning_scene=rospy.ServiceProxy('/apply_planning_scene', ApplyPlanningScene)
+    set_planning_scene = rospy.ServiceProxy('/apply_planning_scene', ApplyPlanningScene)
     rospy.logdebug("Robot Groups: %s", robot.get_group_names())
 
     ## Create scene commanders ##
@@ -361,14 +392,16 @@ if __name__ == "__main__":
     print(move_group.get_current_pose().pose.orientation.w)
     """
 
-    start_joint_goal = move_group.get_current_joint_values()
+    # start_joint_goal = move_group.get_current_joint_values()
+    # print(start_joint_goal)
 
-    current = ( move_group.get_current_pose().pose.position.x, move_group.get_current_pose().pose.position.y, move_group.get_current_pose().pose.position.z )
+    start_joint_goal = [0.0, -0.785398163397, 0.0, -2.35619449019, 0.0, 1.57079632679, 0.785398163397]
+    move_group.set_max_velocity_scaling_factor(0.25)
     pose = move_group.get_current_pose()
     ## Wait a bit ##
-    rospy.sleep(1.0)
-
-    #go_to_neutral_pose(move_group, current)
+    # go_to_neutral_pose(move_group, current)
+    open_gripper()
+    go_to_starting_pose(move_group)
     ## Pick ##
     pick(move_group)
 
@@ -376,9 +409,8 @@ if __name__ == "__main__":
     rospy.sleep(1.0)
 
     go_to_neutral_pose2(move_group)
-    print("sono neutrale")
 
     ## Place ##
     place(move_group)
-    #go_to_neutral_pose2(move_group, pose)
-
+    rospy.sleep(1.0)
+    go_to_neutral_pose(move_group)
