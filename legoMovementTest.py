@@ -29,15 +29,49 @@ from moveit_msgs.srv import ApplyPlanningScene, ApplyPlanningSceneRequest, GetPl
 
 legoWidth = 0.0314
 legoHeight = 0.019
-openOffSet = 0.005
+openOffSet = 0.007
 closedOffset = 0.005
+"""
+Primo punto
 x_start = 0.22313862587754232
 y_start = 0.43369528155501386
 z_start = -0.017351559286898043
-
+d1
 x_end = 0.20501066481555896
 y_end = 0.561893957425897
 z_end = 0.012373272999947768
+1
+x_start = 0.07046725964075157
+y_start = 0.43477082193286887
+z_start = -0.017275654103103416
+d2
+x_end = 0.30035270490483135
+y_end = 0.5758897991036703
+z_end = 0.013427473727494171
+2
+x_start = 0.12239073295454152
+y_start = 0.4347217843628824
+z_start = -0.016965818155016486
+
+6
+x_start = 0.3705750262848844
+y_start = 0.4481066976926753
+z_start = -0.014774046909519792
+
+#d3
+x_end = 0.33185270490483135
+y_end = 0.5758897991036703
+z_end = 0.013427473727494171
+"""
+#7
+x_start = 0.4201145557236046
+y_start = 0.44608137254548264
+z_start = -0.014633344607714552
+
+#d4
+x_end = 0.4287925814359116
+y_end = 0.5735185910501651
+z_end = 0.01478935230201435
 
 eef_height = 0.111
 
@@ -106,7 +140,7 @@ def go_to_neutral_pose2(move_group):
     waypoints = []
     # scale = 1.0
     wpose = move_group.get_current_pose().pose
-    wpose.position.z = wpose.position.z + 0.05
+    wpose.position.z = wpose.position.z + 0.06
     waypoints.append(copy.deepcopy(wpose))
     # wpose.position.z = z_end + 0.105 + 0.01
 
@@ -116,7 +150,7 @@ def go_to_neutral_pose2(move_group):
         0.0
     )
     plan = move_group.retime_trajectory(moveit_commander.RobotCommander().get_current_state(), plan,
-                                        velocity_scaling_factor=0.05, acceleration_scaling_factor=0.01
+                                        velocity_scaling_factor=0.07, acceleration_scaling_factor=0.01
                                         )  # Per rallentare il robot
     move_group.execute(plan, wait=True)
 
@@ -130,7 +164,6 @@ def pick(move_group):
     wpose.position.y = y_start
     waypoints.append(copy.deepcopy(wpose))
     wpose.position.z = z_start + ((legoHeight*2)/3) + eef_height
-    rospy.sleep(10)
     waypoints.append(copy.deepcopy(wpose))
 
     (plan, fraction) = move_group.compute_cartesian_path(
@@ -139,7 +172,7 @@ def pick(move_group):
         0.0
     )
     plan = move_group.retime_trajectory(moveit_commander.RobotCommander().get_current_state(), plan,
-                                        velocity_scaling_factor=0.05, acceleration_scaling_factor=0.01
+                                        velocity_scaling_factor=0.07, acceleration_scaling_factor=0.01
                                         )  # Per rallentare il robot
     move_group.execute(plan, wait=True)
     close_gripper()
@@ -194,7 +227,7 @@ def open_gripper():
     client.wait_for_server()
 
     # Creates a goal to send to the action server.
-    goal = franka_gripper.msg.MoveGoal(width=legoWidth+openOffSet, speed=0.02)
+    goal = franka_gripper.msg.MoveGoal(width=2*legoWidth+openOffSet, speed=0.02)
     # goal.width = 0.022
     # goal.speed = 1.0
 
@@ -217,9 +250,9 @@ def close_gripper():
     client.wait_for_server()
 
     # Creates a goal to send to the action server.
-    goal = franka_gripper.msg.GraspGoal(width=legoWidth - closedOffset, speed=0.02, force=2)
-    goal.epsilon.inner = 0.05
-    goal.epsilon.outer = 0.05
+    goal = franka_gripper.msg.GraspGoal(width=2*legoWidth - closedOffset, speed=0.02, force=2)
+    goal.epsilon.inner = 0.01
+    goal.epsilon.outer = 0.01
     # goal.width = 0.022
     # goal.speed = 1.0
 
@@ -236,7 +269,8 @@ def place(group):
     waypoints = []
     # scale = 1.0
     wpose = move_group.get_current_pose().pose
-    wpose.position.x = x_end - 0.002
+    #wpose.position.x = x_end - 0.002
+    wpose.position.x = x_end
     waypoints.append(copy.deepcopy(wpose))
     wpose.position.y = y_end - 0.001
     waypoints.append(copy.deepcopy(wpose))
@@ -249,7 +283,7 @@ def place(group):
         0.0
     )
     plan = move_group.retime_trajectory(moveit_commander.RobotCommander().get_current_state(), plan,
-                                        velocity_scaling_factor=0.05, acceleration_scaling_factor=0.01)  # Per rallentare il robot
+                                        velocity_scaling_factor=0.07, acceleration_scaling_factor=0.01)  # Per rallentare il robot
     move_group.execute(plan, wait=True)
     open_gripper()
     # planning_scene_interface.remove_attached_object('object')
@@ -366,11 +400,10 @@ if __name__ == "__main__":
     eef_link = move_group.get_end_effector_link()
 
     ## Wait a bit for ROS to initialize the planning_scene_interface ##
-    rospy.sleep(1.0)
+    #rospy.sleep(1.0)
 
     ## Add collision objects ##
     #addCollisionObjects(planning_scene_interface)
-    move_group.set_max_velocity_scaling_factor(0.1)
     """
     print(move_group.get_current_pose().pose.position.x)
     print(move_group.get_current_pose().pose.position.y)
@@ -395,7 +428,7 @@ if __name__ == "__main__":
     print("aperto")
     go_to_starting_pose(move_group)
     print("arrivato")
-    rospy.sleep(1.0)
+    #rospy.sleep(1.0)
     ## Pick ##
     print("ora provo a prendere")
     pick(move_group)
@@ -406,13 +439,13 @@ if __name__ == "__main__":
     print("ora me ne vado")
     go_to_neutral_pose2(move_group)
     print("neutrale")
-    rospy.sleep(2.0)
+    #rospy.sleep(2.0)
     ## Place ##
     print("ora provo a piazzare")
     place(move_group)
     print("piazzato")
-    rospy.sleep(2.0)
+    #rospy.sleep(2.0)
     print("torno indietro")
     go_to_neutral_pose2(move_group)
-    rospy.sleep(2.0)
+    #rospy.sleep(2.0)
     go_to_neutral_pose(move_group)
