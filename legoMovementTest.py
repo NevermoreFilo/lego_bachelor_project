@@ -36,42 +36,76 @@ Primo punto
 x_start = 0.22313862587754232
 y_start = 0.43369528155501386
 z_start = -0.017351559286898043
-d1
-x_end = 0.20501066481555896
-y_end = 0.561893957425897
-z_end = 0.012373272999947768
-1
+
+#1
 x_start = 0.07046725964075157
 y_start = 0.43477082193286887
 z_start = -0.017275654103103416
-d2
-x_end = 0.30035270490483135
-y_end = 0.5758897991036703
-z_end = 0.013427473727494171
-2
+#2
 x_start = 0.12239073295454152
 y_start = 0.4347217843628824
 z_start = -0.016965818155016486
 
-6
+#3
+x_start = 0.1715555070842264
+y_start = 0.4339485685723369
+z_start = -0.016552528203041164
+
+#4
+x_start = 0.2712850601943779
+y_start = 0.4325605336689113
+z_start = -0.015645227604258682
+
+#5
+x_start = 0.3226593631314784
+y_start = 0.43208637933142
+z_start = -0.015421032728421769
+
+#6
 x_start = 0.3705750262848844
 y_start = 0.4481066976926753
 z_start = -0.014774046909519792
 
-#d3
-x_end = 0.33185270490483135
-y_end = 0.5758897991036703
-z_end = 0.013427473727494171
-"""
 #7
 x_start = 0.4201145557236046
 y_start = 0.44608137254548264
 z_start = -0.014633344607714552
 
+#8
+x_start = 0.0718341463745228
+y_start = 0.6146257537422227
+z_start = -0.0155668052647003
+
+#9
+x_start = 0.1250581629718011
+y_start = 0.6138304330190797
+z_start = -0.015209999247854773
+
+#d1
+x_end = 0.20480186306908092
+y_end = 0.5865994135933717
+z_end = 0.0127731196422731531
+
+#d2
+x_end = 0.2849273084281582 
+y_end = 0.6016428759527038
+z_end = 0.013011696630126613 
+
+#d3
+x_end = 0.2849273084281582 + legoWidth + 0.0015
+y_end = 0.6016428759527038
+z_end = 0.013011696630126613
+
+"""
+#9
+x_start = 0.1250581629718011 -0.0005
+y_start = 0.6138304330190797
+z_start = -0.015209999247854773
+
 #d4
-x_end = 0.4287925814359116
-y_end = 0.5735185910501651
-z_end = 0.01478935230201435
+x_end = 0.39866989271646414 - 0.002
+y_end = 0.599489825525154
+z_end = 0.014653501855344003 - 0.004 + legoHeight
 
 eef_height = 0.111
 
@@ -125,7 +159,7 @@ def go_to_neutral_pose(move_group):
 
 
 def go_to_starting_pose(move_group):
-    move_group.set_max_velocity_scaling_factor(0.1)
+    move_group.set_max_velocity_scaling_factor(0.2)
     joint_goal = move_group.get_current_joint_values()
     joint_goal[0] = start_joint_goal[0] + math.pi/2
     joint_goal[1] = start_joint_goal[1]
@@ -140,7 +174,7 @@ def go_to_neutral_pose2(move_group):
     waypoints = []
     # scale = 1.0
     wpose = move_group.get_current_pose().pose
-    wpose.position.z = wpose.position.z + 0.06
+    wpose.position.z = wpose.position.z + 0.10
     waypoints.append(copy.deepcopy(wpose))
     # wpose.position.z = z_end + 0.105 + 0.01
 
@@ -150,7 +184,7 @@ def go_to_neutral_pose2(move_group):
         0.0
     )
     plan = move_group.retime_trajectory(moveit_commander.RobotCommander().get_current_state(), plan,
-                                        velocity_scaling_factor=0.07, acceleration_scaling_factor=0.01
+                                        velocity_scaling_factor=0.08, acceleration_scaling_factor=0.02
                                         )  # Per rallentare il robot
     move_group.execute(plan, wait=True)
 
@@ -172,7 +206,7 @@ def pick(move_group):
         0.0
     )
     plan = move_group.retime_trajectory(moveit_commander.RobotCommander().get_current_state(), plan,
-                                        velocity_scaling_factor=0.07, acceleration_scaling_factor=0.01
+                                        velocity_scaling_factor=0.08, acceleration_scaling_factor=0.02
                                         )  # Per rallentare il robot
     move_group.execute(plan, wait=True)
     close_gripper()
@@ -250,7 +284,7 @@ def close_gripper():
     client.wait_for_server()
 
     # Creates a goal to send to the action server.
-    goal = franka_gripper.msg.GraspGoal(width=2*legoWidth - closedOffset, speed=0.02, force=2)
+    goal = franka_gripper.msg.GraspGoal(width=2*legoWidth - closedOffset, speed=0.02, force=5)
     goal.epsilon.inner = 0.01
     goal.epsilon.outer = 0.01
     # goal.width = 0.022
@@ -419,8 +453,8 @@ if __name__ == "__main__":
 
     start_joint_goal = [0.0, -0.785398163397, 0.0, -2.35619449019, 0.0, 1.57079632679, 0.785398163397]
     print("inizio")
-    move_group.set_max_velocity_scaling_factor(0.03)
-    move_group.set_max_acceleration_scaling_factor(0.01)
+    move_group.set_max_velocity_scaling_factor(0.08)
+    move_group.set_max_acceleration_scaling_factor(0.02)
     pose = move_group.get_current_pose()
     ## Wait a bit ##
     # go_to_neutral_pose(move_group, current)
