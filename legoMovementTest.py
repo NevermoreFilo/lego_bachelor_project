@@ -29,7 +29,7 @@ from moveit_msgs.srv import ApplyPlanningScene, ApplyPlanningSceneRequest, GetPl
 
 legoWidth = 0.0314
 legoHeight = 0.019
-openOffSet = 0.007
+openOffSet = 0.012
 closedOffset = 0.005
 """
 Primo punto
@@ -82,35 +82,39 @@ y_start = 0.6138304330190797
 z_start = -0.015209999247854773
 
 #d1
-x_end = 0.20480186306908092
-y_end = 0.5865994135933717
-z_end = 0.0127731196422731531
+x_end = 0.20288832488009007
+y_end = 0.5844943504460622
+z_end = 0.01264770456857292
 
 #d2
-x_end = 0.2849273084281582 
-y_end = 0.6016428759527038
-z_end = 0.013011696630126613 
-
-#d3
-x_end = 0.2849273084281582 + legoWidth + 0.0015
-y_end = 0.6016428759527038
-z_end = 0.013011696630126613
-
-"""
-#9
-x_start = 0.1250581629718011 -0.0005
-y_start = 0.6138304330190797
-z_start = -0.015209999247854773
+x_end = 0.2837040663196856
+y_end = 0.5988946726759686
+z_end = 0.013544381106687417
 
 #d4
-x_end = 0.39866989271646414 - 0.002
-y_end = 0.599489825525154
-z_end = 0.014653501855344003 - 0.004 + legoHeight
+x_end = 0.3958770521169853
+y_end = 0.5965657314936886
+z_end = 0.014568227926752192
+
+#d5
+x_end = 0.3953770521169853 + legoWidth
+y_end = 0.5965657314936886
+z_end = 0.013568227926752192
+
+
+
+"""
+#1
+x_start = 0.07046725964075157
+y_start = 0.43477082193286887
+z_start = -0.017275654103103416
+
+#d3
+x_end = 0.2837040663196856 + legoWidth
+y_end = 0.5988946726759686
+z_end = 0.013544381106687417
 
 eef_height = 0.111
-
-neutral_position = [0.3, -5.22e-12, 0.59]
-neutral_orientation = [0.92387953251, -0.382683432368, -6.08473427069e-14, 3.77292876593e-12]
 
 """
 def openGripper(posture):
@@ -159,7 +163,7 @@ def go_to_neutral_pose(move_group):
 
 
 def go_to_starting_pose(move_group):
-    move_group.set_max_velocity_scaling_factor(0.2)
+    move_group.set_max_velocity_scaling_factor(0.5)
     joint_goal = move_group.get_current_joint_values()
     joint_goal[0] = start_joint_goal[0] + math.pi/2
     joint_goal[1] = start_joint_goal[1]
@@ -167,7 +171,18 @@ def go_to_starting_pose(move_group):
     joint_goal[3] = start_joint_goal[3]
     joint_goal[4] = start_joint_goal[4]
     joint_goal[5] = start_joint_goal[5]
-    joint_goal[6] = start_joint_goal[6] + math.pi /2
+    joint_goal[6] = start_joint_goal[6] + math.pi/2
+    move_group.go(joint_goal, wait=True)
+
+def rotate_gripper1(move_group):
+    print("Ruoto il gripper")
+    joint_goal = move_group.get_current_joint_values()
+    joint_goal[6] = joint_goal[6] - math.pi /2
+    move_group.go(joint_goal, wait=True)
+
+def rotate_gripper2(move_group):
+    joint_goal = move_group.get_current_joint_values()
+    joint_goal[6] = joint_goal[6] + math.pi /2
     move_group.go(joint_goal, wait=True)
 
 def go_to_neutral_pose2(move_group):
@@ -184,7 +199,7 @@ def go_to_neutral_pose2(move_group):
         0.0
     )
     plan = move_group.retime_trajectory(moveit_commander.RobotCommander().get_current_state(), plan,
-                                        velocity_scaling_factor=0.08, acceleration_scaling_factor=0.02
+                                        velocity_scaling_factor=0.09, acceleration_scaling_factor=0.02
                                         )  # Per rallentare il robot
     move_group.execute(plan, wait=True)
 
@@ -192,6 +207,8 @@ def go_to_neutral_pose2(move_group):
 def pick(move_group):
     waypoints = []
     # scale = 1.0
+
+    rotate_gripper1(move_group)
     wpose = move_group.get_current_pose().pose
     wpose.position.x = x_start
     waypoints.append(copy.deepcopy(wpose))
@@ -206,9 +223,27 @@ def pick(move_group):
         0.0
     )
     plan = move_group.retime_trajectory(moveit_commander.RobotCommander().get_current_state(), plan,
+                                        velocity_scaling_factor=0.09, acceleration_scaling_factor=0.02
+                                        )  # Per rallentare il robot
+    move_group.execute(plan, wait=True)
+    close_gripper()
+    rospy.sleep(0.5)
+    open_gripper()
+    rospy.sleep(0.5)
+    rotate_gripper2(move_group)
+    wpose.position.z = z_start + ((legoHeight * 2) / 3) + eef_height
+    waypoints.append(copy.deepcopy(wpose))
+
+    (plan, fraction) = move_group.compute_cartesian_path(
+        waypoints,
+        0.01,
+        0.0
+    )
+    plan = move_group.retime_trajectory(moveit_commander.RobotCommander().get_current_state(), plan,
                                         velocity_scaling_factor=0.08, acceleration_scaling_factor=0.02
                                         )  # Per rallentare il robot
     move_group.execute(plan, wait=True)
+    print("Sono tornato giu. richiudo il gripper")
     close_gripper()
     # planning_scene_interface.attach_box(eef_link, 'object')
     """
@@ -273,6 +308,28 @@ def open_gripper():
     print("opened")
     return client.get_result()  # A move result
 
+def open_gripper2():
+    # Creates the SimpleActionClient, passing the type of the action
+    client = actionlib.SimpleActionClient('/franka_gripper/move', franka_gripper.msg.MoveAction)
+
+    # Waits until the action server has started up and started
+    # listening for goals.
+
+    client.wait_for_server()
+
+    # Creates a goal to send to the action server.
+    goal = franka_gripper.msg.MoveGoal(width=legoWidth+openOffSet, speed=0.02)
+    # goal.width = 0.022
+    # goal.speed = 1.0
+
+    # Sends the goal to the action server.
+    client.send_goal(goal)
+    # Waits for the server to finish performing the action.
+    client.wait_for_result()
+    # Prints out the result of executing the action
+    print("opened")
+    return client.get_result()  # A move result
+
 
 def close_gripper():
     # Creates the SimpleActionClient, passing the type of the action
@@ -284,7 +341,7 @@ def close_gripper():
     client.wait_for_server()
 
     # Creates a goal to send to the action server.
-    goal = franka_gripper.msg.GraspGoal(width=2*legoWidth - closedOffset, speed=0.02, force=5)
+    goal = franka_gripper.msg.GraspGoal(width= 2*legoWidth - closedOffset, speed=0.02, force=5)
     goal.epsilon.inner = 0.01
     goal.epsilon.outer = 0.01
     # goal.width = 0.022
@@ -451,10 +508,10 @@ if __name__ == "__main__":
     # start_joint_goal = move_group.get_current_joint_values()
     # print(start_joint_goal)
 
-    start_joint_goal = [0.0, -0.785398163397, 0.0, -2.35619449019, 0.0, 1.57079632679, 0.785398163397]
+    start_joint_goal = [0.0, -0.785398163397, 0.0, -2.35619449019, 0.0, 1.57079632679, 0.785398163397 + 0.00963116339]
     print("inizio")
-    move_group.set_max_velocity_scaling_factor(0.08)
-    move_group.set_max_acceleration_scaling_factor(0.02)
+    move_group.set_max_velocity_scaling_factor(0.1)
+    move_group.set_max_acceleration_scaling_factor(0.03)
     pose = move_group.get_current_pose()
     ## Wait a bit ##
     # go_to_neutral_pose(move_group, current)
@@ -462,7 +519,6 @@ if __name__ == "__main__":
     print("aperto")
     go_to_starting_pose(move_group)
     print("arrivato")
-    #rospy.sleep(1.0)
     ## Pick ##
     print("ora provo a prendere")
     pick(move_group)
@@ -482,4 +538,5 @@ if __name__ == "__main__":
     print("torno indietro")
     go_to_neutral_pose2(move_group)
     #rospy.sleep(2.0)
-    go_to_neutral_pose(move_group)
+    #go_to_neutral_pose(move_group)
+    go_to_starting_pose(move_group)
