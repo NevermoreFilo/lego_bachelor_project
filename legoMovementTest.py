@@ -29,90 +29,97 @@ from moveit_msgs.srv import ApplyPlanningScene, ApplyPlanningSceneRequest, GetPl
 
 legoWidth = 0.0314
 legoHeight = 0.019
-openOffSet = 0.012
+openOffSet = 0.03
 closedOffset = 0.005
 """
-Primo punto
-x_start = 0.22313862587754232
-y_start = 0.43369528155501386
-z_start = -0.017351559286898043
+#1 L
+x_start = -0.08022024347283004
+y_start = 0.4345996311647573
+z_start = -0.017687250096303953
 
-#1
-x_start = 0.07046725964075157
-y_start = 0.43477082193286887
-z_start = -0.017275654103103416
-#2
+#2 L
+x_start = 0.02097427655921029
+y_start = 0.434620359716768
+z_start = -0.01736008183053387
+
+#3 L
+x_start = 0.021374736824171483
+y_start = 0.6157033161972792
+z_start = -0.015843953334895085
+
+#4 L
 x_start = 0.12239073295454152
 y_start = 0.4347217843628824
 z_start = -0.016965818155016486
 
-#3
-x_start = 0.1715555070842264
-y_start = 0.4339485685723369
-z_start = -0.016552528203041164
-
-#4
-x_start = 0.2712850601943779
-y_start = 0.4325605336689113
-z_start = -0.015645227604258682
-
-#5
-x_start = 0.3226593631314784
-y_start = 0.43208637933142
-z_start = -0.015421032728421769
-
-#6
-x_start = 0.3705750262848844
-y_start = 0.4481066976926753
-z_start = -0.014774046909519792
-
-#7
-x_start = 0.4201145557236046
-y_start = 0.44608137254548264
-z_start = -0.014633344607714552
-
-#8
-x_start = 0.0718341463745228
-y_start = 0.6146257537422227
-z_start = -0.0155668052647003
-
-#9
+#5 L
 x_start = 0.1250581629718011
 y_start = 0.6138304330190797
 z_start = -0.015209999247854773
 
+#6 S
+x_start = 0.21788618069731605
+y_start = 0.3082757604473198
+z_start = -0.018247824801653288
+
+#7 S
+x_start = 0.22313862587754232
+y_start = 0.43369528155501386
+z_start = -0.017351559286898043
+
+#8 S
+x_start = 0.32142728885822247
+y_start = 0.3071422312992683
+z_start = -0.017243796812094654
+
+#9 S
+x_start = 0.3226593631314784
+y_start = 0.43208637933142
+z_start = -0.015421032728421769
+
+#10 L
+x_start = 0.4201145557236046
+y_start = 0.44608137254548264
+z_start = -0.014633344607714552
+
+
 #d1
-x_end = 0.20288832488009007
-y_end = 0.5844943504460622
+x_end = 0.20188832488009007
+y_end = 0.5854943504460622
 z_end = 0.01264770456857292
 
 #d2
 x_end = 0.2837040663196856
 y_end = 0.5988946726759686
-z_end = 0.013544381106687417
+z_end = 0.012544381106687417
+
+#d3
+x_end = 0.2852040663196856 + legoWidth
+y_end = 0.5988946726759686
+z_end = 0.012544381106687417
 
 #d4
 x_end = 0.3958770521169853
 y_end = 0.5965657314936886
-z_end = 0.014568227926752192
+z_end = 0.013568227926752192
 
 #d5
-x_end = 0.3953770521169853 + legoWidth
+x_end = 0.3968770521169853 + legoWidth
 y_end = 0.5965657314936886
 z_end = 0.013568227926752192
 
 
 
 """
-#1
-x_start = 0.07046725964075157
-y_start = 0.43477082193286887
-z_start = -0.017275654103103416
+x_start = 0.1250581629718011
+y_start = 0.6138304330190797
+z_start = -0.015209999247854773
 
-#d3
-x_end = 0.2837040663196856 + legoWidth
-y_end = 0.5988946726759686
-z_end = 0.013544381106687417
+
+#d4
+x_end = 0.3968770521169853
+y_end = 0.5965657314936886
+z_end = 0.013568227926752192 + legoHeight
 
 eef_height = 0.111
 
@@ -189,7 +196,7 @@ def go_to_neutral_pose2(move_group):
     waypoints = []
     # scale = 1.0
     wpose = move_group.get_current_pose().pose
-    wpose.position.z = wpose.position.z + 0.10
+    wpose.position.z = wpose.position.z + 0.15
     waypoints.append(copy.deepcopy(wpose))
     # wpose.position.z = z_end + 0.105 + 0.01
 
@@ -199,7 +206,7 @@ def go_to_neutral_pose2(move_group):
         0.0
     )
     plan = move_group.retime_trajectory(moveit_commander.RobotCommander().get_current_state(), plan,
-                                        velocity_scaling_factor=0.09, acceleration_scaling_factor=0.02
+                                        velocity_scaling_factor=0.15, acceleration_scaling_factor=0.02
                                         )  # Per rallentare il robot
     move_group.execute(plan, wait=True)
 
@@ -223,7 +230,7 @@ def pick(move_group):
         0.0
     )
     plan = move_group.retime_trajectory(moveit_commander.RobotCommander().get_current_state(), plan,
-                                        velocity_scaling_factor=0.09, acceleration_scaling_factor=0.02
+                                        velocity_scaling_factor=0.15, acceleration_scaling_factor=0.02
                                         )  # Per rallentare il robot
     move_group.execute(plan, wait=True)
     close_gripper()
@@ -515,7 +522,7 @@ if __name__ == "__main__":
     pose = move_group.get_current_pose()
     ## Wait a bit ##
     # go_to_neutral_pose(move_group, current)
-    open_gripper()
+    open_gripper2()
     print("aperto")
     go_to_starting_pose(move_group)
     print("arrivato")
@@ -523,9 +530,6 @@ if __name__ == "__main__":
     print("ora provo a prendere")
     pick(move_group)
     print("Preso")
-
-    ## Wait a bit ##
-    rospy.sleep(2.0)
     print("ora me ne vado")
     go_to_neutral_pose2(move_group)
     print("neutrale")
