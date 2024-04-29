@@ -32,94 +32,95 @@ legoHeight = 0.019
 openOffSet = 0.03
 closedOffset = 0.005
 """
-#1 L
+#1 L T
 x_start = -0.08022024347283004
 y_start = 0.4345996311647573
 z_start = -0.017687250096303953
 
-#2 L
+#2 L T
 x_start = 0.02097427655921029
 y_start = 0.434620359716768
 z_start = -0.01736008183053387
 
-#3 L
+#3 L T
 x_start = 0.021374736824171483
 y_start = 0.6157033161972792
 z_start = -0.015843953334895085
 
-#4 L
+#4 L 
 x_start = 0.12239073295454152
 y_start = 0.4347217843628824
 z_start = -0.016965818155016486
 
-#5 L
-x_start = 0.1250581629718011
-y_start = 0.6138304330190797
-z_start = -0.015209999247854773
+#5 L T
+x_start = -0.077125263174171483
+y_start = 0.6157033161972792
+z_start = -0.015843953334895085
 
-#6 S
+#6 S T
 x_start = 0.21788618069731605
 y_start = 0.3082757604473198
 z_start = -0.018247824801653288
 
-#7 S
+#7 S T
 x_start = 0.22313862587754232
 y_start = 0.43369528155501386
 z_start = -0.017351559286898043
 
-#8 S
+#8 S T
 x_start = 0.32142728885822247
 y_start = 0.3071422312992683
 z_start = -0.017243796812094654
 
-#9 S
+#9 S T
 x_start = 0.3226593631314784
 y_start = 0.43208637933142
 z_start = -0.015421032728421769
 
-#10 L
+#10 L T
 x_start = 0.4201145557236046
 y_start = 0.44608137254548264
 z_start = -0.014633344607714552
 
-
-#d1
-x_end = 0.20188832488009007
+ 
+#d1 T
+x_end = 0.20288832488009007
 y_end = 0.5854943504460622
 z_end = 0.01264770456857292
 
-#d2
-x_end = 0.2837040663196856
+#d2 T
+x_end = 0.2827540663196856
+y_end = 0.5993946726759686
+z_end = 0.012544381106687417
+
+#d3 T (fare prima questo)
+x_end = 0.2829040663196856 + legoWidth
 y_end = 0.5988946726759686
 z_end = 0.012544381106687417
 
-#d3
-x_end = 0.2852040663196856 + legoWidth
-y_end = 0.5988946726759686
-z_end = 0.012544381106687417
-
-#d4
+#d4 T
 x_end = 0.3958770521169853
 y_end = 0.5965657314936886
 z_end = 0.013568227926752192
 
-#d5
-x_end = 0.3968770521169853 + legoWidth
+#d5 T
+x_end = 0.3960770521169853 + legoWidth
 y_end = 0.5965657314936886
-z_end = 0.013568227926752192
+z_end = 0.012568227926752192
 
 
 
 """
-x_start = 0.1250581629718011
-y_start = 0.6138304330190797
-z_start = -0.015209999247854773
+#4 L T
+x_start = 0.12239073295454152
+y_start = 0.4347217843628824
+z_start = -0.016965818155016486
 
 
 #d4
-x_end = 0.3968770521169853
+x_end = 0.3958770521169853
 y_end = 0.5965657314936886
-z_end = 0.013568227926752192 + legoHeight
+z_end = 0.013568227926752192 +
 
 eef_height = 0.111
 
@@ -170,7 +171,7 @@ def go_to_neutral_pose(move_group):
 
 
 def go_to_starting_pose(move_group):
-    move_group.set_max_velocity_scaling_factor(0.5)
+    move_group.set_max_velocity_scaling_factor(0.9)
     joint_goal = move_group.get_current_joint_values()
     joint_goal[0] = start_joint_goal[0] + math.pi/2
     joint_goal[1] = start_joint_goal[1]
@@ -206,7 +207,7 @@ def go_to_neutral_pose2(move_group):
         0.0
     )
     plan = move_group.retime_trajectory(moveit_commander.RobotCommander().get_current_state(), plan,
-                                        velocity_scaling_factor=0.15, acceleration_scaling_factor=0.02
+                                        velocity_scaling_factor=0.3, acceleration_scaling_factor=0.03
                                         )  # Per rallentare il robot
     move_group.execute(plan, wait=True)
 
@@ -230,7 +231,7 @@ def pick(move_group):
         0.0
     )
     plan = move_group.retime_trajectory(moveit_commander.RobotCommander().get_current_state(), plan,
-                                        velocity_scaling_factor=0.15, acceleration_scaling_factor=0.02
+                                        velocity_scaling_factor=0.5, acceleration_scaling_factor=0.03
                                         )  # Per rallentare il robot
     move_group.execute(plan, wait=True)
     close_gripper()
@@ -247,7 +248,7 @@ def pick(move_group):
         0.0
     )
     plan = move_group.retime_trajectory(moveit_commander.RobotCommander().get_current_state(), plan,
-                                        velocity_scaling_factor=0.08, acceleration_scaling_factor=0.02
+                                        velocity_scaling_factor=0.4, acceleration_scaling_factor=0.03
                                         )  # Per rallentare il robot
     move_group.execute(plan, wait=True)
     print("Sono tornato giu. richiudo il gripper")
@@ -348,7 +349,7 @@ def close_gripper():
     client.wait_for_server()
 
     # Creates a goal to send to the action server.
-    goal = franka_gripper.msg.GraspGoal(width= 2*legoWidth - closedOffset, speed=0.02, force=5)
+    goal = franka_gripper.msg.GraspGoal(width= 2*legoWidth - closedOffset, speed=0.02, force=10)
     goal.epsilon.inner = 0.01
     goal.epsilon.outer = 0.01
     # goal.width = 0.022
@@ -381,7 +382,7 @@ def place(group):
         0.0
     )
     plan = move_group.retime_trajectory(moveit_commander.RobotCommander().get_current_state(), plan,
-                                        velocity_scaling_factor=0.07, acceleration_scaling_factor=0.01)  # Per rallentare il robot
+                                        velocity_scaling_factor=0.3, acceleration_scaling_factor=0.03)  # Per rallentare il robot
     move_group.execute(plan, wait=True)
     open_gripper()
     # planning_scene_interface.remove_attached_object('object')
@@ -517,7 +518,7 @@ if __name__ == "__main__":
 
     start_joint_goal = [0.0, -0.785398163397, 0.0, -2.35619449019, 0.0, 1.57079632679, 0.785398163397 + 0.00963116339]
     print("inizio")
-    move_group.set_max_velocity_scaling_factor(0.1)
+    move_group.set_max_velocity_scaling_factor(0.2)
     move_group.set_max_acceleration_scaling_factor(0.03)
     pose = move_group.get_current_pose()
     ## Wait a bit ##
