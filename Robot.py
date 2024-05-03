@@ -1,28 +1,25 @@
 #!/usr/bin/env python
 
-import copy
-# Author: Ioan Sucan, Ridhwan Luthra
-# Contributor: Rick Staa (Translated code from cpp to python)
 
-## Python standard library imports ##
+# Librerie standard Python
 import sys
-import numpy as np
+import copy
 import math
 
+# Ros e Franka
+import rospy
 import actionlib
 import franka_gripper
 import geometry_msgs.msg
-import moveit_msgs
-## Ros ##
-import rospy
 
-## MoveIt and TF ##
+# MoveIt
 import moveit_commander
+import moveit_msgs
 from control_msgs.msg import GripperCommand, GripperCommandAction
 from franka_gripper.msg import MoveAction, GraspAction
 from tf.transformations import quaternion_from_euler
 
-## Import msgs and srvs ##
+# Messaggi e server
 from geometry_msgs.msg import PoseStamped
 from trajectory_msgs.msg import JointTrajectoryPoint
 from moveit_msgs.msg import DisplayTrajectory, Grasp, PlaceLocation, Constraints, OrientationConstraint
@@ -38,9 +35,7 @@ class Coordinate():
 
 class Robot():
     def __init__(self):
-
         # Inizializzazione generale
-
         rospy.init_node("panda_arm_lego_pick_place")  # Inizializzazione nodo ROS
         moveit_commander.roscpp_initialize(sys.argv)  # Inizializzazione moveit_commander
         rospy.wait_for_service("apply_planning_scene")
@@ -74,10 +69,10 @@ class Robot():
         self.legoWidth = 0.0314
         self.legoHeight = 0.019
 
-        self.openOffSet = 0.009  # Offset da aggiungere all'apertura del gripper oltre alla larghezza/lunghezza del lego
-        self.closedOffset = 0.005  # Offset da aggiungere alla chiusura del gripper (la dimensionee del lego non è sufficiente)
+        self.openOffSet = 0.03  # Offset da aggiungere all'apertura del gripper oltre alla larghezza/lunghezza del lego
+        self.closedOffset = 0.005  # Offset da aggiungere alla chiusura del gripper (la dimensionee del lego non e' sufficiente)
         self.eef_height = 0.111  # Offset sull'asse delle z, preso dalla documentazione ufficiale
-        self.upOffset = 0.015 # Offset a cui il braccio si alza dopo aver piazzato il pezzo
+        self.upOffset = 0.0314  # Offset a cui il braccio si alza dopo aver piazzato il pezzo
 
         # Inizializzazione liste di coordinate
         self.starting_longP_coordinates = []
@@ -90,12 +85,18 @@ class Robot():
 
         self.starting_shortP_coordinates = []
         self.starting_shortP_aux_coords = [[0.21788618069731605, 0.3082757604473198, -0.018247824801653288],
-                                           [-0.22313862587754232, 0.43369528155501386, -0.017351559286898043],
+                                           [0.22313862587754232, 0.43369528155501386, -0.017351559286898043],
                                            [0.32142728885822247, 0.3071422312992683, -0.017243796812094654],
                                            [0.3226593631314784, 0.43208637933142, -0.015421032728421769]]
 
         self.place_short_coordinates = []
-        self.place_short_aux_coords = [[0.20288832488009007, 0.5854943504460622, 0.01264770456857292]]
+        self.place_short_aux_coords = [[0.20188832488009007, 0.5854943504460622, 0.01264770456857292]]
+
+        self.place_long_coordinates = []
+        self.place_long_aux_coords = [[0.2827540663196856, 0.5993946726759686, 0.012544381106687417],
+                                      [0.3143040663196856, 0.5988946726759686, 0.012544381106687417],
+                                      [0.3958770521169853, 0.5965657314936886, 0.013568227926752192],
+                                      [0.4274770521169853, 0.5965657314936886, 0.012568227926752192]]
 
     # Funzione per l'inizializzazione delle liste di coordinate
     def init_coordinates(self):
@@ -112,12 +113,17 @@ class Robot():
             self.place_short_coordinates.append(Coordinate(self.place_short_aux_coords[index][0],
                                                            self.place_short_aux_coords[index][1],
                                                            self.place_short_aux_coords[index][2]))
+        for index in range(4):
+            self.place_long_coordinates.append(Coordinate(self.place_long_aux_coords[index][0],
+                                                          self.place_long_aux_coords[index][1],
+                                                          self.place_long_aux_coords[index][2]))
 
     def go_to_starting_pose(self):
         self.move_group.go(self.start_joint_goal, wait=True)
 
     def go_to_working_pose(self):
-        # self.move_group.set_max_velocity_scaling_factor(1)
+        self.move_group.set_max_velocity_scaling_factor(1)
+        self.move_group.set_max_acceleration_scaling_factor(0.06)
         joint_goal = self.move_group.get_current_joint_values()
         joint_goal[0] = self.start_joint_goal[0] + math.pi / 2
         joint_goal[1] = self.start_joint_goal[1]
@@ -130,16 +136,21 @@ class Robot():
 
     # Funzione per portare il gripper nella posa del primo grip (quella dal lato corto)
     def pre_grasp_rotation(self):
+        self.move_group.set_max_velocity_scaling_factor(0.7)
+        self.move_group.set_max_acceleration_scaling_factor(0.03)
         joint_goal = self.move_group.get_current_joint_values()
         joint_goal[6] = joint_goal[6] - math.pi / 2
         self.move_group.go(joint_goal, wait=True)
 
     # Funzione per portare il gripper nella posa del primo grip (quella dal lato lungo)
     def grasp_rotation(self):
+        self.move_group.set_max_velocity_scaling_factor(0.7)
+        self.move_group.set_max_acceleration_scaling_factor(0.03)
         joint_goal = self.move_group.get_current_joint_values()
         joint_goal[6] = joint_goal[6] + math.pi / 2
         self.move_group.go(joint_goal, wait=True)
 
+    # Funzione per far ritirare il braccio verso l'alto
     def upward_retreat(self):
         waypoints = []
         wpose = self.move_group.get_current_pose().pose
@@ -152,19 +163,84 @@ class Robot():
             0.0
         )
         plan = self.move_group.retime_trajectory(moveit_commander.RobotCommander().get_current_state(), plan,
-                                            velocity_scaling_factor=0.8, acceleration_scaling_factor=0.03
-                                            )  # Per rallentare il robot
+                                                 velocity_scaling_factor=0.8, acceleration_scaling_factor=0.03
+                                                 )  # Per rallentare il robot
         self.move_group.execute(plan, wait=True)
 
-    def pick(self, coordinate):
+    # Funzione per aprire il gripper. Il parametro width dev'essere una stringa che indica il grado di apertura (NARROW o WIDE)
+    def open_gripper(self, width):
+        if width == "NARROW":
+            width_multiplier = 1
+        elif width == "WIDE":
+            width_multiplier = 2
+        else:
+            return "Error, incorrect width. Use \"NARROW\" or \"WIDE\""
+        # Crea il SimpleActionClient per una MoveAction
+        client = actionlib.SimpleActionClient('/franka_gripper/move', franka_gripper.msg.MoveAction)
+        client.wait_for_server()
+        # Creazione di un goal da mandare al server
+        goal = franka_gripper.msg.MoveGoal(width=width_multiplier * self.legoWidth + self.openOffSet, speed=0.01)
+        client.send_goal(goal)
+        client.wait_for_result()
+        # Stampo il risultato dell'esecuzione dell'azione
+        return client.get_result()
+
+    # Funzione per chiudere il gripper. Il parametro width dev'essere una stringa che indica il grado di apertura (NARROW o WIDE)
+    def close_gripper(self, width):
+        if width == "NARROW":
+            width_multiplier = 1
+            force = 10
+        elif width == "WIDE":
+            width_multiplier = 2
+            force = 10
+        else:
+            return "Error, incorrect width. Use \"NARROW\" or \"WIDE\""
+        # Crea il SimpleActionClient per una GraspAction
+        client = actionlib.SimpleActionClient('/franka_gripper/grasp', franka_gripper.msg.GraspAction)
+        client.wait_for_server()
+        # Creazione di un goal da mandare al server
+        goal = franka_gripper.msg.GraspGoal(width=width_multiplier * self.legoWidth - self.closedOffset, speed=0.04,
+                                            force=force)
+        goal.epsilon.inner = 0.01  # Tolleranza di sfasamento di apertura del gripper rispetto a quella designata
+        goal.epsilon.outer = 0.01
+        client.send_goal(goal)
+        client.wait_for_result()
+        # Stampo il risultato dell'esecuzione dell'azione
+        return client.get_result()
+
+    def secure_gripper(self):
+        # Crea il SimpleActionClient per una GraspAction
+        client = actionlib.SimpleActionClient('/franka_gripper/grasp', franka_gripper.msg.GraspAction)
+        client.wait_for_server()
+        # Creazione di un goal da mandare al server
+        goal = franka_gripper.msg.GraspGoal(width=self.legoWidth - self.closedOffset, speed=0.05,
+                                            force=0.25)
+        goal.epsilon.inner = 0.01  # Tolleranza di sfasamento di apertura del gripper rispetto a quella designata
+        goal.epsilon.outer = 0.01
+        client.send_goal(goal)
+        client.wait_for_result()
+        # Stampo il risultato dell'esecuzione dell'azione
+        return client.get_result()
+
+    # Funzione per prendere il pezzo. Il parametro coordinate e' di tipo Coordinate ed indica il punto in cui
+    # prendere. Il parametro pieceType dev'essere una stringa che indica il tipo di pezzo da prendere(SMALL o LONG)
+    def pick(self, coordinate, pieceType):
         waypoints = []
         self.pre_grasp_rotation()
+        self.open_gripper("NARROW")
+        if pieceType == "SMALL":
+            width = "NARROW"
+        elif pieceType == "LONG":
+            width = "WIDE"
+        else:
+            return "Error, incorrect piece type. Use \"SMALL\" or \"LONG\""
         wpose = self.move_group.get_current_pose().pose
         wpose.position.x = coordinate.x
         waypoints.append(copy.deepcopy(wpose))
         wpose.position.y = coordinate.y
         waypoints.append(copy.deepcopy(wpose))
-        wpose.position.z = coordinate.z + ((self.legoHeight * 2) / 3) + self.eef_height # Il grasp avviene a 2/3 circa dell'altezza del lego
+        wpose.position.z = coordinate.z + (
+                (self.legoHeight * 2) / 3) + self.eef_height  # Il grasp avviene a 2/3 circa dell'altezza del lego
         waypoints.append(copy.deepcopy(wpose))
         (plan, fraction) = self.move_group.compute_cartesian_path(
             waypoints,
@@ -172,15 +248,19 @@ class Robot():
             0.0
         )
         plan = self.move_group.retime_trajectory(moveit_commander.RobotCommander().get_current_state(), plan,
-                                            velocity_scaling_factor=0.8, acceleration_scaling_factor=0.03
-                                            )  # Per rallentare il robot
+                                                 velocity_scaling_factor=0.9, acceleration_scaling_factor=0.04
+                                                 )  # Per rallentare il robot
+
         self.move_group.execute(plan, wait=True)
-        self.close_gripper()
+        # self.close_gripper("NARROW")
+        self.secure_gripper()
         rospy.sleep(0.5)
-        self.open_gripper()
+        self.open_gripper(width)
         rospy.sleep(0.5)
         self.grasp_rotation()
-        wpose.position.z = coordinate.z + ((self.legoHeight * 2) / 3) + self.eef_height # Il grasp avviene a 2/3 circa dell'altezza del lego
+        print("Check")
+        wpose.position.z = coordinate.z + (
+                (self.legoHeight * 2) / 3) + self.eef_height  # Il grasp avviene a 2/3 circa dell'altezza del lego
         waypoints.append(copy.deepcopy(wpose))
 
         (plan, fraction) = self.move_group.compute_cartesian_path(
@@ -188,13 +268,121 @@ class Robot():
             0.01,
             0.0
         )
-        plan = move_group.retime_trajectory(moveit_commander.RobotCommander().get_current_state(), plan,
-                                            velocity_scaling_factor=0.6, acceleration_scaling_factor=0.03
-                                            )  # Per rallentare il robot
-        move_group.execute(plan, wait=True)
-        print("Sono tornato giu. richiudo il gripper")
-        close_gripper()
+        plan = self.move_group.retime_trajectory(moveit_commander.RobotCommander().get_current_state(), plan,
+                                                 velocity_scaling_factor=0.8, acceleration_scaling_factor=0.03
+                                                 )  # Per rallentare il robot
+        self.move_group.execute(plan, wait=True)
+        self.close_gripper(width)
+        self.upward_retreat()
+
+    # Funzione per piazzare il pezzo. Il parametro coordinate e' di tipo Coordinate ed indica il punto in cui
+    # piazzare. Il parametro pieceType dev'essere una stringa che indica il tipo di pezzo da piazzare(SMALL o LONG)
+    # Il parametro z_offset indica di quanto bisogna alzarsi rispetto alla coordinata originale
+    def place(self, coordinate, piece_type, z_offset):
+        if piece_type == "SMALL":
+            width = "NARROW"
+        elif piece_type == "LONG":
+            width = "WIDE"
+        else:
+            return "Error, incorrect piece type. Use \"SMALL\" or \"LONG\""
+
+        waypoints = []
+        wpose = self.move_group.get_current_pose().pose
+        wpose.position.x = coordinate.x
+        waypoints.append(copy.deepcopy(wpose))
+        wpose.position.y = coordinate.y - 0.001
+        waypoints.append(copy.deepcopy(wpose))
+        wpose.position.z = coordinate.z + self.eef_height - 0.0075 + z_offset  # Scendo alla coordinata ma salendo poco meno della dimensione dell'end effector
+        waypoints.append(copy.deepcopy(wpose))
+
+        (plan, fraction) = self.move_group.compute_cartesian_path(
+            waypoints,
+            0.01,
+            0.0
+        )
+        plan = self.move_group.retime_trajectory(moveit_commander.RobotCommander().get_current_state(), plan,
+                                                 velocity_scaling_factor=0.8,
+                                                 acceleration_scaling_factor=0.03)  # Per rallentare il robot
+        self.move_group.execute(plan, wait=True)
+        self.open_gripper(width)
+        self.upward_retreat()
+
+    # Funzione per far costruire la torre al braccio robotico
+    def build_tower(self):
+        self.go_to_working_pose()
+
+        # Piazzo i 4 blocchi, ogni volta alzando l'altezza di cui si ritira il braccio
+        self.pick(self.starting_shortP_coordinates[0], "SMALL")
+        self.place(self.place_short_coordinates[0], "SMALL", 0)
+        self.upOffset += self.legoHeight
+
+        self.pick(self.starting_shortP_coordinates[1], "SMALL")
+        self.place(self.place_short_coordinates[0], "SMALL", self.legoHeight)
+        self.upOffset += self.legoHeight
+
+        self.pick(self.starting_shortP_coordinates[2], "SMALL")
+        self.place(self.place_short_coordinates[0], "SMALL", 2 * self.legoHeight)
+        self.upOffset += self.legoHeight
+
+        self.pick(self.starting_shortP_coordinates[3], "SMALL")
+        self.place(self.place_short_coordinates[0], "SMALL", 3 * self.legoHeight)
+        self.upOffset += self.legoHeight
+
+        self.go_to_working_pose()
+
+    # Funzione per far costruire il rettangolo al braccio robotico
+    def build_rectangle(self):
+        self.go_to_working_pose()
+
+        # Piazzo i 2 blocchi. Per ragioni sperimentali, risulta piu' comodo piazzare prima il pezzo piu' in fondo
+        self.pick(self.starting_longP_coordinates[0], "LONG")
+        self.place(self.place_long_coordinates[1], "LONG", 0)
+
+        self.pick(self.starting_longP_coordinates[1], "LONG")
+        self.place(self.place_long_coordinates[0], "LONG", 0)
+
+        self.go_to_working_pose()
+
+    # Funzione per far costruire il rettangolo al braccio robotico
+    def build_square(self):
+        self.go_to_working_pose()
+
+        # Piazzo i 4 blocchi. Per ragioni sperimentali, risulta piu' comodo piazzare prima il pezzo piu' in fondo
+        self.pick(self.starting_longP_coordinates[2], "LONG")
+        self.place(self.place_long_coordinates[3], "LONG", 0)
+
+        self.pick(self.starting_longP_coordinates[3], "LONG")
+        self.place(self.place_long_coordinates[2], "LONG", 0)
+
+        self.upOffset += self.legoHeight
+
+        self.pick(self.starting_longP_coordinates[4], "LONG")
+        self.place(self.place_long_coordinates[3], "LONG", self.legoHeight)
+
+        self.pick(self.starting_longP_coordinates[5], "LONG")
+        self.place(self.place_long_coordinates[2], "LONG", self.legoHeight)
+
+        self.go_to_working_pose()
+
+    def test_tower(self):
+        self.go_to_working_pose()
+        self.upOffset += self.legoHeight
+        self.upOffset += self.legoHeight
+        self.upOffset += self.legoHeight
+        self.pick(self.starting_shortP_coordinates[3], "SMALL")
+        self.place(self.place_short_coordinates[0], "SMALL", 3 * self.legoHeight - 0.01)
+
+        """
+        self.upOffset += self.legoHeight
+        
+        self.pick(self.starting_shortP_coordinates[3], "SMALL")
+        self.place(self.place_short_coordinates[0], "SMALL", 3 * self.legoHeight)
+        self.upOffset += self.legoHeight
+        """
+        self.go_to_working_pose()
+
 
 robot = Robot()
 robot.init_coordinates()
-print(robot.starting_longP_coordinates[0].x)
+#robot.build_tower()
+robot.build_rectangle()
