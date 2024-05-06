@@ -1,5 +1,5 @@
+        self.up_offset += self.lego_height
 #!/usr/bin/env python
-
 
 # Librerie standard Python
 import sys
@@ -66,48 +66,49 @@ class Robot():
                                  0.785398163397]  # Posizione a riposo del robot
 
         # Dimensione dei lego
-        self.legoWidth = 0.0314
-        self.legoHeight = 0.019
+        self.lego_width = 0.0314
+        self.lego_height = 0.019
 
-        self.openOffSet = 0.03  # Offset da aggiungere all'apertura del gripper oltre alla larghezza/lunghezza del lego
-        self.closedOffset = 0.005  # Offset da aggiungere alla chiusura del gripper (la dimensionee del lego non e' sufficiente)
+        self.open_offset = 0.03  # Offset da aggiungere all'apertura del gripper oltre alla larghezza/lunghezza del lego
+        self.closed_offset = 0.005  # Offset da aggiungere alla chiusura del gripper (la dimensionee del lego non e' sufficiente)
         self.eef_height = 0.111  # Offset sull'asse delle z, preso dalla documentazione ufficiale
-        self.upOffset = 0.0314  # Offset a cui il braccio si alza dopo aver piazzato il pezzo
+        self.up_offset = 0.0314  # Offset a cui il braccio si alza dopo aver piazzato il pezzo
+        self.initial_up_offset = 0.005
 
         # Inizializzazione liste di coordinate
-        self.starting_longP_coordinates = []
-        self.starting_longP_aux_coords = [[-0.08022024347283004, 0.4345996311647573, -0.017687250096303953],
-                                          [-0.077125263174171483, 0.6157033161972792, -0.015843953334895085],
-                                          [0.02097427655921029, 0.434620359716768, -0.01736008183053387],
-                                          [0.021374736824171483, 0.6157033161972792, -0.015843953334895085],
-                                          [0.12239073295454152, 0.4347217843628824, -0.016965818155016486],
-                                          [0.4201145557236046, 0.44608137254548264, -0.014633344607714552]]
+        self.starting_long_coordinates = []
+        self.starting_long_aux_coords = [[-0.08022024347283004, 0.4345996311647573, -0.017687250096303953],
+                                         [-0.077125263174171483, 0.6157033161972792, -0.015843953334895085],
+                                         [0.02097427655921029, 0.434620359716768, -0.01736008183053387],
+                                         [0.021374736824171483, 0.6157033161972792, -0.015843953334895085],
+                                         [0.12239073295454152, 0.4347217843628824, -0.016965818155016486],
+                                         [0.4201145557236046, 0.44608137254548264, -0.014633344607714552]]
 
-        self.starting_shortP_coordinates = []
-        self.starting_shortP_aux_coords = [[0.21788618069731605, 0.3082757604473198, -0.018247824801653288],
-                                           [0.22313862587754232, 0.43369528155501386, -0.017351559286898043],
-                                           [0.32142728885822247, 0.3071422312992683, -0.017243796812094654],
-                                           [0.3226593631314784, 0.43208637933142, -0.015421032728421769]]
+        self.starting_short_coordinates = []
+        self.starting_short_aux_coords = [[0.21788618069731605, 0.3082757604473198, -0.018247824801653288],
+                                          [0.22313862587754232, 0.43369528155501386, -0.017351559286898043],
+                                          [0.32142728885822247, 0.3071422312992683, -0.017243796812094654],
+                                          [0.3226593631314784, 0.43208637933142, -0.015421032728421769]]
 
         self.place_short_coordinates = []
         self.place_short_aux_coords = [[0.20188832488009007, 0.5854943504460622, 0.01264770456857292]]
 
         self.place_long_coordinates = []
-        self.place_long_aux_coords = [[0.2827540663196856, 0.5993946726759686, 0.012544381106687417],
-                                      [0.3143040663196856, 0.5988946726759686, 0.012544381106687417],
-                                      [0.3958770521169853, 0.5965657314936886, 0.013568227926752192],
-                                      [0.4274770521169853, 0.5965657314936886, 0.012568227926752192]]
+        self.place_long_aux_coords = [[0.2840540663196856, 0.5973946726759686, 0.012544381106687417],
+                                      [0.3153040663196856, 0.5978946726759686, 0.011544381106687417],
+                                      [0.3958770521169853, 0.59505657314936886, 0.011568227926752192],
+                                      [0.4270770521169853, 0.59455657314936886, 0.010568227926752192]]
 
     # Funzione per l'inizializzazione delle liste di coordinate
     def init_coordinates(self):
         for index in range(6):
-            self.starting_longP_coordinates.append(Coordinate(self.starting_longP_aux_coords[index][0],
-                                                              self.starting_longP_aux_coords[index][1],
-                                                              self.starting_longP_aux_coords[index][2]))
+            self.starting_long_coordinates.append(Coordinate(self.starting_long_aux_coords[index][0],
+                                                             self.starting_long_aux_coords[index][1],
+                                                             self.starting_long_aux_coords[index][2]))
         for index in range(4):
-            self.starting_shortP_coordinates.append(Coordinate(self.starting_shortP_aux_coords[index][0],
-                                                               self.starting_shortP_aux_coords[index][1],
-                                                               self.starting_shortP_aux_coords[index][2]))
+            self.starting_short_coordinates.append(Coordinate(self.starting_short_aux_coords[index][0],
+                                                              self.starting_short_aux_coords[index][1],
+                                                              self.starting_short_aux_coords[index][2]))
 
         for index in range(1):
             self.place_short_coordinates.append(Coordinate(self.place_short_aux_coords[index][0],
@@ -154,7 +155,7 @@ class Robot():
     def upward_retreat(self):
         waypoints = []
         wpose = self.move_group.get_current_pose().pose
-        wpose.position.z = wpose.position.z + self.upOffset
+        wpose.position.z = wpose.position.z + self.up_offset + self.initial_up_offset
         waypoints.append(copy.deepcopy(wpose))
 
         (plan, fraction) = self.move_group.compute_cartesian_path(
@@ -179,7 +180,7 @@ class Robot():
         client = actionlib.SimpleActionClient('/franka_gripper/move', franka_gripper.msg.MoveAction)
         client.wait_for_server()
         # Creazione di un goal da mandare al server
-        goal = franka_gripper.msg.MoveGoal(width=width_multiplier * self.legoWidth + self.openOffSet, speed=0.01)
+        goal = franka_gripper.msg.MoveGoal(width=width_multiplier * self.lego_width + self.open_offset, speed=0.01)
         client.send_goal(goal)
         client.wait_for_result()
         # Stampo il risultato dell'esecuzione dell'azione
@@ -199,7 +200,7 @@ class Robot():
         client = actionlib.SimpleActionClient('/franka_gripper/grasp', franka_gripper.msg.GraspAction)
         client.wait_for_server()
         # Creazione di un goal da mandare al server
-        goal = franka_gripper.msg.GraspGoal(width=width_multiplier * self.legoWidth - self.closedOffset, speed=0.04,
+        goal = franka_gripper.msg.GraspGoal(width=width_multiplier * self.lego_width - self.closed_offset, speed=0.04,
                                             force=force)
         goal.epsilon.inner = 0.01  # Tolleranza di sfasamento di apertura del gripper rispetto a quella designata
         goal.epsilon.outer = 0.01
@@ -213,7 +214,7 @@ class Robot():
         client = actionlib.SimpleActionClient('/franka_gripper/grasp', franka_gripper.msg.GraspAction)
         client.wait_for_server()
         # Creazione di un goal da mandare al server
-        goal = franka_gripper.msg.GraspGoal(width=self.legoWidth - self.closedOffset, speed=0.05,
+        goal = franka_gripper.msg.GraspGoal(width=self.lego_width - self.closed_offset, speed=0.05,
                                             force=0.25)
         goal.epsilon.inner = 0.01  # Tolleranza di sfasamento di apertura del gripper rispetto a quella designata
         goal.epsilon.outer = 0.01
@@ -240,7 +241,7 @@ class Robot():
         wpose.position.y = coordinate.y
         waypoints.append(copy.deepcopy(wpose))
         wpose.position.z = coordinate.z + (
-                (self.legoHeight * 2) / 3) + self.eef_height  # Il grasp avviene a 2/3 circa dell'altezza del lego
+                (self.lego_height * 2) / 3) + self.eef_height  # Il grasp avviene a 2/3 circa dell'altezza del lego
         waypoints.append(copy.deepcopy(wpose))
         (plan, fraction) = self.move_group.compute_cartesian_path(
             waypoints,
@@ -260,7 +261,7 @@ class Robot():
         self.grasp_rotation()
         print("Check")
         wpose.position.z = coordinate.z + (
-                (self.legoHeight * 2) / 3) + self.eef_height  # Il grasp avviene a 2/3 circa dell'altezza del lego
+                (self.lego_height * 2) / 3) + self.eef_height  # Il grasp avviene a 2/3 circa dell'altezza del lego
         waypoints.append(copy.deepcopy(wpose))
 
         (plan, fraction) = self.move_group.compute_cartesian_path(
@@ -312,21 +313,21 @@ class Robot():
         self.go_to_working_pose()
 
         # Piazzo i 4 blocchi, ogni volta alzando l'altezza di cui si ritira il braccio
-        self.pick(self.starting_shortP_coordinates[0], "SMALL")
+        self.pick(self.starting_short_coordinates[0], "SMALL")
         self.place(self.place_short_coordinates[0], "SMALL", 0)
-        self.upOffset += self.legoHeight
+        self.up_offset += self.lego_height
 
-        self.pick(self.starting_shortP_coordinates[1], "SMALL")
-        self.place(self.place_short_coordinates[0], "SMALL", self.legoHeight)
-        self.upOffset += self.legoHeight
+        self.pick(self.starting_short_coordinates[1], "SMALL")
+        self.place(self.place_short_coordinates[0], "SMALL", self.lego_height)
+        self.up_offset += self.lego_height
 
-        self.pick(self.starting_shortP_coordinates[2], "SMALL")
-        self.place(self.place_short_coordinates[0], "SMALL", 2 * self.legoHeight)
-        self.upOffset += self.legoHeight
+        self.pick(self.starting_short_coordinates[2], "SMALL")
+        self.place(self.place_short_coordinates[0], "SMALL", 2 * self.lego_height)
+        self.up_offset += self.lego_height
 
-        self.pick(self.starting_shortP_coordinates[3], "SMALL")
-        self.place(self.place_short_coordinates[0], "SMALL", 3 * self.legoHeight)
-        self.upOffset += self.legoHeight
+        self.pick(self.starting_short_coordinates[3], "SMALL")
+        self.place(self.place_short_coordinates[0], "SMALL", 3 * self.lego_height)
+        self.up_offset += self.lego_height
 
         self.go_to_working_pose()
 
@@ -335,10 +336,10 @@ class Robot():
         self.go_to_working_pose()
 
         # Piazzo i 2 blocchi. Per ragioni sperimentali, risulta piu' comodo piazzare prima il pezzo piu' in fondo
-        self.pick(self.starting_longP_coordinates[0], "LONG")
+        self.pick(self.starting_long_coordinates[0], "LONG")
         self.place(self.place_long_coordinates[1], "LONG", 0)
 
-        self.pick(self.starting_longP_coordinates[1], "LONG")
+        self.pick(self.starting_long_coordinates[1], "LONG")
         self.place(self.place_long_coordinates[0], "LONG", 0)
 
         self.go_to_working_pose()
@@ -348,29 +349,29 @@ class Robot():
         self.go_to_working_pose()
 
         # Piazzo i 4 blocchi. Per ragioni sperimentali, risulta piu' comodo piazzare prima il pezzo piu' in fondo
-        self.pick(self.starting_longP_coordinates[2], "LONG")
+        self.pick(self.starting_long_coordinates[2], "LONG")
         self.place(self.place_long_coordinates[3], "LONG", 0)
 
-        self.pick(self.starting_longP_coordinates[3], "LONG")
+        self.pick(self.starting_long_coordinates[3], "LONG")
         self.place(self.place_long_coordinates[2], "LONG", 0)
 
-        self.upOffset += self.legoHeight
+        self.up_offset += self.lego_height
 
-        self.pick(self.starting_longP_coordinates[4], "LONG")
-        self.place(self.place_long_coordinates[3], "LONG", self.legoHeight)
+        self.pick(self.starting_long_coordinates[4], "LONG")
+        self.place(self.place_long_coordinates[3], "LONG", self.lego_height)
 
-        self.pick(self.starting_longP_coordinates[5], "LONG")
-        self.place(self.place_long_coordinates[2], "LONG", self.legoHeight)
+        self.pick(self.starting_long_coordinates[5], "LONG")
+        self.place(self.place_long_coordinates[2], "LONG", self.lego_height)
 
         self.go_to_working_pose()
 
     def test_tower(self):
         self.go_to_working_pose()
-        self.upOffset += self.legoHeight
-        self.upOffset += self.legoHeight
-        self.upOffset += self.legoHeight
-        self.pick(self.starting_shortP_coordinates[3], "SMALL")
-        self.place(self.place_short_coordinates[0], "SMALL", 3 * self.legoHeight - 0.01)
+        self.up_offset += self.lego_height
+        self.up_offset += self.lego_height
+        self.up_offset += self.lego_height
+        self.pick(self.starting_short_coordinates[3], "SMALL")
+        self.place(self.place_short_coordinates[0], "SMALL", 3 * self.lego_height - 0.01)
 
         """
         self.upOffset += self.legoHeight
@@ -384,5 +385,17 @@ class Robot():
 
 robot = Robot()
 robot.init_coordinates()
-#robot.build_tower()
+
+robot.go_to_working_pose()
+coord=robot.place_long_coordinates[2]
+coord.x-=0.0007
+robot.up_offset += robot.lego_height
+robot.pick(robot.starting_long_coordinates[5], "LONG")
+robot.place(coord, "LONG", 0)
+robot.go_to_working_pose()
+"""
+robot.build_tower()
 robot.build_rectangle()
+robot.build_square()
+"""
+
