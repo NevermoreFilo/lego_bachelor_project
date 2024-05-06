@@ -1,21 +1,24 @@
+#!/usr/bin/env python
+
+# Librerie standard Python
+import time
 import cv2
 import numpy as np
 
+# Classi del progetto
 import dummy
 
-
-class RedShapesRecognition:
+class ShapeRecognition:
     font = cv2.FONT_ITALIC
-    camIndex = 0
+    camIndex = 0 # 0 per webcam incorporata, 1 per telecamere esterne
     isExecuting = False
     numberOfShapes = 3
-    shapesRecognized = 0
-    frameCounter = np.empty(numberOfShapes, dtype=int)
+    frameCounter = np.empty(numberOfShapes, dtype=int) # Contatore frame
     for i in range(numberOfShapes):
         frameCounter[i] = 0
 
     def __init__(self):
-        super(RedShapesRecognition, self).__init__()
+        self.aux = "a"
 
     # Funzione ausiliaria per il funzionamento delle trackbars
     def nothing(x):
@@ -26,7 +29,7 @@ class RedShapesRecognition:
         cap = cv2.VideoCapture(self.camIndex)
 
         # Creazione delle trackbars per aggiustare la maschera
-        self.createTrackbars()
+        # self.createTrackbars()
 
         # fps = cap.get(cv2.CAP_PROP_FPS)
         # print('Frames per second : ', fps, 'FPS')
@@ -35,6 +38,7 @@ class RedShapesRecognition:
             _, frame = cap.read()
             hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
+            """
             # Calibrazione della maschera
             l_h = cv2.getTrackbarPos("L-H", "Trackbars")
             l_s = cv2.getTrackbarPos("L-S", "Trackbars")
@@ -42,9 +46,12 @@ class RedShapesRecognition:
             u_h = cv2.getTrackbarPos("U-H", "Trackbars")
             u_s = cv2.getTrackbarPos("U-S", "Trackbars")
             u_v = cv2.getTrackbarPos("U-V", "Trackbars")
+            """
+            #lower_red = np.array([l_h, l_s, l_v])
+            #upper_red = np.array([u_h, u_s, u_v])
 
-            lower_red = np.array([l_h, l_s, l_v])
-            upper_red = np.array([u_h, u_s, u_v])
+            lower_red = (70, 160, 30) # Valori ricavati sperimentalmente
+            upper_red = (180, 255, 243)
 
             # Creazione maschera
             mask = cv2.inRange(hsv, lower_red, upper_red)
@@ -76,31 +83,29 @@ class RedShapesRecognition:
                                     self.frameCounter[i] = 0
                             cv2.putText(frame, "Square", (x, y), self.font, 1, (0, 0, 0))
                             self.frameCounter[index] = self.frameCounter[index] + 1
-                            self.validate(index)
+                            self.validate(index, "Square")
 
                         elif 1.2 <= ratio <= 2.1:
                             index = 1
                             for i in range(self.numberOfShapes):
                                 if i != index:
                                     self.frameCounter[i] = 0
-                            cv2.putText(frame, "Rectangle 1", (x, y), self.font, 1, (0, 0, 0))
+                            cv2.putText(frame, "Rectangle", (x, y), self.font, 1, (0, 0, 0))
                             self.frameCounter[index] = self.frameCounter[index] + 1
-                            self.validate(index)
+                            self.validate(index, "Rectangle")
 
-                        elif 2.2 <= ratio <= 4.1:
+                        elif 0.1 <= ratio < 0.3:
                             index = 2
                             for i in range(self.numberOfShapes):
                                 if i != index:
                                     self.frameCounter[i] = 0
-                            cv2.putText(frame, "Rectangle 2", (x, y), self.font, 1, (0, 0, 0))
+                            cv2.putText(frame, "Tower", (x, y), self.font, 1, (0, 0, 0))
                             self.frameCounter[index] = self.frameCounter[index] + 1
-                            self.validate(index)
+                            self.validate(index, "Tower")
                         else:
                             for i in range(self.numberOfShapes):
                                 self.frameCounter[i] = 0
                             cv2.putText(frame, "Unidentified", (x, y), self.font, 1, (0, 0, 0))
-                    else:
-                        self.shapesRecognized = 0
 
             cv2.imshow("Mask", mask)
             cv2.imshow("Frame", frame)
@@ -113,22 +118,30 @@ class RedShapesRecognition:
         cap.release()
         cv2.destroyAllWindows()
 
-    def validate(self, index):
+    def validate(self, index, shape):
         if self.frameCounter[index] / 30 > 5 and self.isExecuting is False:
             self.isExecuting = True
             self.frameCounter[index] = 0
-            dummy.dummy()
+            if(shape=="Square"):
+                dummy.dummySquare()
+                time.sleep(1)
+            elif(shape=="Rectangle"):
+                dummy.dummyRect()
+                time.sleep(1)
+            elif(shape=="Tower"):
+                dummy.dummyTower()
+                time.sleep(1)
             self.isExecuting = False
 
     def createTrackbars(self):
         cv2.namedWindow("Trackbars")
-        cv2.createTrackbar("L-H", "Trackbars", 70, 180, RedShapesRecognition.nothing)
-        cv2.createTrackbar("L-S", "Trackbars", 160, 255, RedShapesRecognition.nothing)
-        cv2.createTrackbar("L-V", "Trackbars", 30, 255, RedShapesRecognition.nothing)
-        cv2.createTrackbar("U-H", "Trackbars", 180, 180, RedShapesRecognition.nothing)
-        cv2.createTrackbar("U-S", "Trackbars", 255, 255, RedShapesRecognition.nothing)
-        cv2.createTrackbar("U-V", "Trackbars", 243, 255, RedShapesRecognition.nothing)
+        cv2.createTrackbar("L-H", "Trackbars", 70, 180, ShapeRecognition.nothing)
+        cv2.createTrackbar("L-S", "Trackbars", 160, 255, ShapeRecognition.nothing)
+        cv2.createTrackbar("L-V", "Trackbars", 30, 255, ShapeRecognition.nothing)
+        cv2.createTrackbar("U-H", "Trackbars", 180, 180, ShapeRecognition.nothing)
+        cv2.createTrackbar("U-S", "Trackbars", 255, 255, ShapeRecognition.nothing)
+        cv2.createTrackbar("U-V", "Trackbars", 243, 255, ShapeRecognition.nothing)
 
 
-recognition = RedShapesRecognition()
+recognition = ShapeRecognition()
 recognition.startRecognition()
