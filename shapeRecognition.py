@@ -5,28 +5,25 @@ import time
 import cv2
 import numpy as np
 
-# Classi del progetto
-import dummy
 
+# Classe che si occupa della parte di riconoscimento delle figure su un foglio
 class ShapeRecognition:
-    font = cv2.FONT_ITALIC
-    camIndex = 0 # 0 per webcam incorporata, 1 per telecamere esterne
-    isExecuting = False
-    numberOfShapes = 3
-    frameCounter = np.empty(numberOfShapes, dtype=int) # Contatore frame
-    for i in range(numberOfShapes):
-        frameCounter[i] = 0
 
-    def __init__(self):
-        self.aux = "a"
+    def __init__(self, robot):
+        self.robot = robot  # Il robot passato come argomento al costruttore dev'essere gia' stato inizializzato
 
-    # Funzione ausiliaria per il funzionamento delle trackbars
-    def nothing(x):
-        # any operation
-        pass
+        self.cam_index = 0  # 0 per webcam incorporata, 1 per telecamere esterne
+        self.is_executing = False
+        self.numer_of_shapes = 3  # Var ausiliaria
+        self.frame_counter = np.empty(self.numer_of_shapes, dtype=int)  # Contatore frame
+        for i in range(
+                self.numer_of_shapes):  # Ogni forma ha associato un contatore che misura per quanti frame e' stata
+            self.frame_counter[i] = 0  # riconosciuta. Tutti i contatori sono inizializzati a 0
+        self.font = cv2.FONT_ITALIC
 
-    def startRecognition(self):
-        cap = cv2.VideoCapture(self.camIndex)
+    # Funzione principale, avvia la webcam e la versione mascherata, termina solo quando l'utente preme esc
+    def start_recognition(self):
+        cap = cv2.VideoCapture(self.cam_index)
 
         # Creazione delle trackbars per aggiustare la maschera
         # self.createTrackbars()
@@ -46,11 +43,11 @@ class ShapeRecognition:
             u_h = cv2.getTrackbarPos("U-H", "Trackbars")
             u_s = cv2.getTrackbarPos("U-S", "Trackbars")
             u_v = cv2.getTrackbarPos("U-V", "Trackbars")
+            lower_red = np.array([l_h, l_s, l_v])
+            upper_red = np.array([u_h, u_s, u_v])
             """
-            #lower_red = np.array([l_h, l_s, l_v])
-            #upper_red = np.array([u_h, u_s, u_v])
 
-            lower_red = (70, 160, 30) # Valori ricavati sperimentalmente
+            lower_red = (70, 160, 30)  # Valori ricavati sperimentalmente
             upper_red = (180, 255, 243)
 
             # Creazione maschera
@@ -75,64 +72,74 @@ class ShapeRecognition:
                     if len(approx) == 4:
                         x, y, w, h = cv2.boundingRect(cnt)
                         ratio = float(w) / h
-                        # @TODO: implementare una chiamata a funzione in base alla forma riconosciuta
-                        if 0.9 <= ratio <= 1.1:
+                        if 0.9 <= ratio <= 1.1:  # Se il ratio e' circa 1:1 si assume sia un quadrato
                             index = 0
-                            for i in range(self.numberOfShapes):
-                                if i != index:
-                                    self.frameCounter[i] = 0
+                            for i in range(
+                                    self.numer_of_shapes):  # Mentre una forma e' riconosciuta, si azzerano tutti gli altri counter
+                                if i != index:  # Questo impedisce conflitti dati da piu' immagini riconosciute contemporaneamente
+                                    self.frame_counter[i] = 0
                             cv2.putText(frame, "Square", (x, y), self.font, 1, (0, 0, 0))
-                            self.frameCounter[index] = self.frameCounter[index] + 1
+                            self.frame_counter[index] = self.frame_counter[index] + 1
                             self.validate(index, "Square")
 
-                        elif 1.2 <= ratio <= 2.1:
+                        elif 1.2 <= ratio <= 2.1:  # Se il ratio e' circa 2:1 si assume sia un rettangolo
                             index = 1
-                            for i in range(self.numberOfShapes):
+                            for i in range(self.numer_of_shapes):
                                 if i != index:
-                                    self.frameCounter[i] = 0
+                                    self.frame_counter[i] = 0
                             cv2.putText(frame, "Rectangle", (x, y), self.font, 1, (0, 0, 0))
-                            self.frameCounter[index] = self.frameCounter[index] + 1
+                            self.frame_counter[index] = self.frame_counter[index] + 1
                             self.validate(index, "Rectangle")
 
-                        elif 0.1 <= ratio < 0.3:
+                        elif 0.1 <= ratio < 0.3:  # Se il ratio e' di circa 1:4, si assume sia una "torre"
                             index = 2
-                            for i in range(self.numberOfShapes):
+                            for i in range(self.numer_of_shapes):
                                 if i != index:
-                                    self.frameCounter[i] = 0
+                                    self.frame_counter[i] = 0
                             cv2.putText(frame, "Tower", (x, y), self.font, 1, (0, 0, 0))
-                            self.frameCounter[index] = self.frameCounter[index] + 1
+                            self.frame_counter[index] = self.frame_counter[index] + 1
                             self.validate(index, "Tower")
                         else:
-                            for i in range(self.numberOfShapes):
-                                self.frameCounter[i] = 0
+                            for i in range(self.numer_of_shapes):
+                                self.frame_counter[i] = 0
                             cv2.putText(frame, "Unidentified", (x, y), self.font, 1, (0, 0, 0))
 
-            cv2.imshow("Mask", mask)
-            cv2.imshow("Frame", frame)
+            cv2.imshow("Frame - Press 'esc' to quit", frame)  # Mostra cio' che vede la webcam
+            cv2.imshow("Mask - Press 'esc' to quit", mask)  # Mostra la versione con la maschera
 
             # Attendo che l'utente prema "esc"
             key = cv2.waitKey(1)
             if key == 27:
                 break
 
-        cap.release()
+        cap.release()  # Una volta che l'utente preme esc, chiudo le finestre e termino il programma
         cv2.destroyAllWindows()
 
+    # Funzione per contare il numero di frame consecutivi per cui la forma e' stata riconosciuta
+    # Se sono passati almeno 4 secondi dal suo riconoscimento, chiama la relativa procedura del braccio robotico
     def validate(self, index, shape):
-        if self.frameCounter[index] / 30 > 5 and self.isExecuting is False:
-            self.isExecuting = True
-            self.frameCounter[index] = 0
-            if(shape=="Square"):
-                dummy.dummySquare()
+        if self.frame_counter[index] / 30 > 4 and self.is_executing is False:
+            self.is_executing = True
+            self.frame_counter[index] = 0
+            if (shape == "Square"):
+                #dummy.dummySquare()
+                self.robot.build_square()
                 time.sleep(1)
-            elif(shape=="Rectangle"):
-                dummy.dummyRect()
+            elif (shape == "Rectangle"):
+                #dummy.dummyRect()
+                self.robot.build_rectangle()
                 time.sleep(1)
-            elif(shape=="Tower"):
-                dummy.dummyTower()
+            elif (shape == "Tower"):
+                #dummy.dummyTower()
+                self.robot.build_tower()
                 time.sleep(1)
-            self.isExecuting = False
+            self.is_executing = False  # La variabile is_executing serve ad implementare una sorta di mutex
 
+    # Funzione ausiliaria necessaria alle trackbars
+    def nothing(self):
+        pass
+
+    # Funzione ausiliaria, serve a mostrare a schermo delle trackbars per calibrare piu' comodamente la maschera
     def createTrackbars(self):
         cv2.namedWindow("Trackbars")
         cv2.createTrackbar("L-H", "Trackbars", 70, 180, ShapeRecognition.nothing)
@@ -141,7 +148,3 @@ class ShapeRecognition:
         cv2.createTrackbar("U-H", "Trackbars", 180, 180, ShapeRecognition.nothing)
         cv2.createTrackbar("U-S", "Trackbars", 255, 255, ShapeRecognition.nothing)
         cv2.createTrackbar("U-V", "Trackbars", 243, 255, ShapeRecognition.nothing)
-
-
-recognition = ShapeRecognition()
-recognition.startRecognition()
