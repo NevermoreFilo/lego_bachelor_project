@@ -60,7 +60,7 @@ class Robot:
             "/move_group/display_planned_path", DisplayTrajectory, queue_size=20
         )
         self.start_joint_goal = [0.0, -0.785398163397, 0.0, -2.35619449019, 0.0, 1.57079632679,
-                                 0.785398163397]  # Posizione a riposo del robot
+                                 0.805398163397]  # Posizione a riposo del robot
 
         # Dimensione dei lego
         self.lego_width = 0.0314
@@ -91,10 +91,10 @@ class Robot:
         self.place_short_aux_coords = [[0.20188832488009007, 0.5854943504460622, 0.01264770456857292]]
 
         self.place_long_coordinates = []
-        self.place_long_aux_coords = [[0.2840540663196856, 0.5973946726759686, 0.012544381106687417],
-                                      [0.3153040663196856, 0.5978946726759686, 0.011544381106687417],
-                                      [0.3958770521169853, 0.59505657314936886, 0.011568227926752192],
-                                      [0.4270770521169853, 0.59455657314936886, 0.010568227926752192]]
+        self.place_long_aux_coords = [[0.28470540663196856, 0.5983946726759686, 0.012544381106687417],
+                                      [0.3158040663196856, 0.5973946726759686, 0.011544381106687417],
+                                      [0.39547839242926826, 0.59605657314936886, 0.010568227926752192],
+                                      [0.4265770521169853, 0.59505657314936886, 0.010568227926752192]]
 
     # Funzione per l'inizializzazione delle liste di coordinate
     def init_coordinates(self):
@@ -136,16 +136,16 @@ class Robot:
 
     # Funzione per portare il gripper nella posa del primo grip (quella dal lato corto)
     def pre_grasp_rotation(self):
-        self.move_group.set_max_velocity_scaling_factor(0.7)
-        self.move_group.set_max_acceleration_scaling_factor(0.03)
+        self.move_group.set_max_velocity_scaling_factor(0.8)
+        self.move_group.set_max_acceleration_scaling_factor(0.1)
         joint_goal = self.move_group.get_current_joint_values()
         joint_goal[6] = joint_goal[6] - math.pi / 2
         self.move_group.go(joint_goal, wait=True)
 
     # Funzione per portare il gripper nella posa del primo grip (quella dal lato lungo)
     def grasp_rotation(self):
-        self.move_group.set_max_velocity_scaling_factor(0.7)
-        self.move_group.set_max_acceleration_scaling_factor(0.03)
+        self.move_group.set_max_velocity_scaling_factor(0.8)
+        self.move_group.set_max_acceleration_scaling_factor(0.1)
         joint_goal = self.move_group.get_current_joint_values()
         joint_goal[6] = joint_goal[6] + math.pi / 2
         self.move_group.go(joint_goal, wait=True)
@@ -163,7 +163,7 @@ class Robot:
             0.0
         )
         plan = self.move_group.retime_trajectory(moveit_commander.RobotCommander().get_current_state(), plan,
-                                                 velocity_scaling_factor=0.8, acceleration_scaling_factor=0.03
+                                                 velocity_scaling_factor=0.8, acceleration_scaling_factor=0.2
                                                  )  # Per rallentare il robot
         self.move_group.execute(plan, wait=True)
 
@@ -181,6 +181,18 @@ class Robot:
         # Creazione di un goal da mandare al server. L'apertura avviene lentamente per evitare problemi incontrati
         # sperimentalmente
         goal = franka_gripper.msg.MoveGoal(width=width_multiplier * self.lego_width + self.open_offset, speed=0.01)
+        client.send_goal(goal)
+        client.wait_for_result()
+        return client.get_result()
+
+    # Funzione per aprire il gripper all'inizio. La differenza con la precedente sta nella velocita'
+    def starting_open_gripper(self):
+
+        # Crea il SimpleActionClient per una MoveAction
+        client = actionlib.SimpleActionClient('/franka_gripper/move', franka_gripper.msg.MoveAction)
+        client.wait_for_server()
+
+        goal = franka_gripper.msg.MoveGoal(width= self.lego_width + self.open_offset, speed=0.04)
         client.send_goal(goal)
         client.wait_for_result()
         return client.get_result()
@@ -225,7 +237,7 @@ class Robot:
     def pick(self, coordinate, pieceType):
         waypoints = []
         self.pre_grasp_rotation()
-        self.open_gripper("NARROW")
+        self.starting_open_gripper()
         if pieceType == "SMALL":
             width = "NARROW"
         elif pieceType == "LONG":
@@ -246,7 +258,7 @@ class Robot:
             0.0
         )
         plan = self.move_group.retime_trajectory(moveit_commander.RobotCommander().get_current_state(), plan,
-                                                 velocity_scaling_factor=0.9, acceleration_scaling_factor=0.06
+                                                 velocity_scaling_factor=0.9, acceleration_scaling_factor=0.2
                                                  )  # Per rallentare il robot
 
         self.move_group.execute(plan, wait=True)
@@ -266,7 +278,7 @@ class Robot:
             0.0
         )
         plan = self.move_group.retime_trajectory(moveit_commander.RobotCommander().get_current_state(), plan,
-                                                 velocity_scaling_factor=0.8, acceleration_scaling_factor=0.04
+                                                 velocity_scaling_factor=0.8, acceleration_scaling_factor=0.15
                                                  )  # Per rallentare il robot
         self.move_group.execute(plan, wait=True)
         self.close_gripper(width)
@@ -299,11 +311,10 @@ class Robot:
         )
         plan = self.move_group.retime_trajectory(moveit_commander.RobotCommander().get_current_state(), plan,
                                                  velocity_scaling_factor=0.8,
-                                                 acceleration_scaling_factor=0.06)  # Per rallentare il robot
+                                                 acceleration_scaling_factor=0.1)  # Per rallentare il robot
         self.move_group.execute(plan, wait=True)
         self.open_gripper(width)
         self.upward_retreat()
-
     # Seguono le funzioni per costruire le figure. Regola generale: prima e dopo iniziare la costruzione, il braccio si
     # porta nella sua "working position"
 
@@ -366,16 +377,15 @@ class Robot:
 
         self.go_to_working_pose()
 
-
 """
 robot.build_tower()
 robot.build_rectangle()
 robot.build_square()
-robot.go_to_working_pose()
-coord=robot.place_long_coordinates[2]
-coord.x-=0.0007
-robot.up_offset += robot.lego_height
-robot.pick(robot.starting_long_coordinates[5], "LONG")
-robot.place(coord, "LONG", 0)
-robot.go_to_working_pose()
+robot.pick(robot.starting_long_coordinates[0], "LONG")
+robot.place(robot.place_long_coordinates[1], "LONG", 0)
 """
+robot = Robot()
+robot.init_coordinates()
+robot.go_to_working_pose()
+robot.build_square()
+robot.go_to_working_pose()
