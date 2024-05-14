@@ -100,34 +100,34 @@ class Robot:
                                       [0.39547839242926826, 0.59605657314936886, 0.010568227926752192],
                                       [0.4265770521169853, 0.59505657314936886, 0.010568227926752192]]
 
-        self.mrk_detector = None
-        self.realsense = Camera.Camera()
+        self.mrk_detector = None # Inizialmente il rilevatore dei marker e' nullo, viene inizializzato in init_coordinates
+        self.realsense = Camera.Camera() 
+        
 
     # Funzione per l'inizializzazione delle liste di coordinate
     def init_coordinates(self):
         for index in range(6):
-            self.starting_long_coordinates.append(Coordinate.Coordinate(self.starting_long_aux_coords[index][0],
-                                                                        self.starting_long_aux_coords[index][1],
-                                                                        self.starting_long_aux_coords[index][2],
-                                                                        True))
+            self.starting_long_coordinates.append(Coordinate.PickCoordinate(self.starting_long_aux_coords[index][0],
+                                                                            self.starting_long_aux_coords[index][1],
+                                                                            self.starting_long_aux_coords[index][2]))
         for index in range(4):
-            self.starting_short_coordinates.append(Coordinate.Coordinate(self.starting_short_aux_coords[index][0],
-                                                                         self.starting_short_aux_coords[index][1],
-                                                                         self.starting_short_aux_coords[index][2],
-                                                                         True))
+            self.starting_short_coordinates.append(Coordinate.PickCoordinate(self.starting_short_aux_coords[index][0],
+                                                                             self.starting_short_aux_coords[index][1],
+                                                                             self.starting_short_aux_coords[index][2]))
 
         for index in range(1):
-            self.place_short_coordinates.append(Coordinate.Coordinate(self.place_short_aux_coords[index][0],
-                                                                      self.place_short_aux_coords[index][1],
-                                                                      self.place_short_aux_coords[index][2],
-                                                                      True))
+            self.place_short_coordinates.append(Coordinate.PlaceCoordinate(self.place_short_aux_coords[index][0],
+                                                                           self.place_short_aux_coords[index][1],
+                                                                           self.place_short_aux_coords[index][2],
+                                                                           True))
         for index in range(4):
-            self.place_long_coordinates.append(Coordinate.Coordinate(self.place_long_aux_coords[index][0],
-                                                                     self.place_long_aux_coords[index][1],
-                                                                     self.place_long_aux_coords[index][2],
-                                                                     True))
+            self.place_long_coordinates.append(Coordinate.PlaceCoordinate(self.place_long_aux_coords[index][0],
+                                                                          self.place_long_aux_coords[index][1],
+                                                                          self.place_long_aux_coords[index][2],
+                                                                          True))
+
         self.mrk_detector = MarkerDetector.MarkerDetector(short_coord_list=self.starting_short_coordinates,
-                                           long_coord_list=self.starting_long_coordinates)
+                                                          long_coord_list=self.starting_long_coordinates)
 
     # Funzione che porta il robot ad una posizione "a riposo"
     def go_to_starting_pose(self):
@@ -397,7 +397,7 @@ class Robot:
         if j < 4:
             print("Pezzi lunghi insufficienti")
             sys.exit()
-            
+
     # Seguono le funzioni per costruire le figure. Regola generale: prima e dopo iniziare la costruzione, il braccio si
     # porta nella sua "working position"
 
