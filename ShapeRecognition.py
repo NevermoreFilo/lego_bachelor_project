@@ -116,9 +116,9 @@ class ShapeRecognition:
         cv2.destroyAllWindows()
 
     # Funzione per contare il numero di frame consecutivi per cui la forma e' stata riconosciuta
-    # Se sono passati almeno 4 secondi dal suo riconoscimento, chiama la relativa procedura del braccio robotico
+    # Se sono passati almeno 3 secondi dal suo riconoscimento, chiama la relativa procedura del braccio robotico
     def validate(self, index, shape):
-        if self.frame_counter[index] / 30 > 4 and self.is_executing is False:
+        if self.frame_counter[index] / 30 > 3 and self.is_executing is False:
             self.is_executing = True
             self.frame_counter[index] = 0
             if (shape == "Square"):
@@ -140,7 +140,7 @@ class ShapeRecognition:
         pass
 
     # Funzione ausiliaria, serve a mostrare a schermo delle trackbars per calibrare piu' comodamente la maschera
-    def createTrackbars(self):
+    def create_trackbars(self):
         cv2.namedWindow("Trackbars")
         cv2.createTrackbar("L-H", "Trackbars", 70, 180, ShapeRecognition.nothing)
         cv2.createTrackbar("L-S", "Trackbars", 160, 255, ShapeRecognition.nothing)
