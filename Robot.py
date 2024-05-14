@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import time
 
 # Classi del progetto
 import ShapeRecognition
@@ -27,6 +28,9 @@ from geometry_msgs.msg import PoseStamped
 from trajectory_msgs.msg import JointTrajectoryPoint
 from moveit_msgs.msg import DisplayTrajectory, Grasp, PlaceLocation, Constraints, OrientationConstraint
 from moveit_msgs.srv import ApplyPlanningScene, ApplyPlanningSceneRequest, GetPlanningScene
+
+from Markers import MarkerDetector
+from Vision import Camera
 
 
 class Robot:
@@ -96,28 +100,39 @@ class Robot:
                                       [0.39547839242926826, 0.59605657314936886, 0.010568227926752192],
                                       [0.4265770521169853, 0.59505657314936886, 0.010568227926752192]]
 
+        self.mrk_detector = None
+        self.realsense = Camera.Camera()
+
     # Funzione per l'inizializzazione delle liste di coordinate
     def init_coordinates(self):
         for index in range(6):
             self.starting_long_coordinates.append(Coordinate.Coordinate(self.starting_long_aux_coords[index][0],
                                                                         self.starting_long_aux_coords[index][1],
-                                                                        self.starting_long_aux_coords[index][2]))
+                                                                        self.starting_long_aux_coords[index][2],
+                                                                        True))
         for index in range(4):
             self.starting_short_coordinates.append(Coordinate.Coordinate(self.starting_short_aux_coords[index][0],
                                                                          self.starting_short_aux_coords[index][1],
-                                                                         self.starting_short_aux_coords[index][2]))
+                                                                         self.starting_short_aux_coords[index][2],
+                                                                         True))
 
         for index in range(1):
             self.place_short_coordinates.append(Coordinate.Coordinate(self.place_short_aux_coords[index][0],
                                                                       self.place_short_aux_coords[index][1],
-                                                                      self.place_short_aux_coords[index][2]))
+                                                                      self.place_short_aux_coords[index][2],
+                                                                      True))
         for index in range(4):
             self.place_long_coordinates.append(Coordinate.Coordinate(self.place_long_aux_coords[index][0],
                                                                      self.place_long_aux_coords[index][1],
-                                                                     self.place_long_aux_coords[index][2]))
+                                                                     self.place_long_aux_coords[index][2],
+                                                                     True))
+        self.mrk_detector = MarkerDetector.MarkerDetector(short_coord_list=self.starting_short_coordinates,
+                                           long_coord_list=self.starting_long_coordinates)
 
     # Funzione che porta il robot ad una posizione "a riposo"
     def go_to_starting_pose(self):
+        self.move_group.set_max_velocity_scaling_factor(1)
+        self.move_group.set_max_acceleration_scaling_factor(0.06)
         self.move_group.go(self.start_joint_goal, wait=True)
 
     # Funzione che porta il robot in una posizione "di lavoro": direzionato verso la base e con l'end-effector orientato come i lego
@@ -192,7 +207,7 @@ class Robot:
         client = actionlib.SimpleActionClient('/franka_gripper/move', franka_gripper.msg.MoveAction)
         client.wait_for_server()
 
-        goal = franka_gripper.msg.MoveGoal(width= self.lego_width + self.open_offset, speed=0.04)
+        goal = franka_gripper.msg.MoveGoal(width=self.lego_width + self.open_offset, speed=0.04)
         client.send_goal(goal)
         client.wait_for_result()
         return client.get_result()
@@ -315,28 +330,105 @@ class Robot:
         self.move_group.execute(plan, wait=True)
         self.open_gripper(width)
         self.upward_retreat()
+
+    # Funzione che itera le coordinate relative ai pezzi lunghi fino a trovarne uno disponibile. Se non lo trova, termina il programma
+    def find_suitable_long_piece(self):
+        self.go_to_working_pose()
+        time.sleep(5.0)
+        self.realsense.get_frame()
+        self.mrk_detector.detect()
+        i = 0
+        while not self.starting_long_coordinates[i].active:
+            i = i + 1
+            if i == 6:
+                print("Non e' stato rilevato un pezzo lungo conforme")
+                sys.exit()
+        return i
+
+    # Funzione che itera le coordinate relative ai pezzi corti fino a trovarne uno disponibile. Se non lo trova, termina il programma
+    def find_suitable_short_piece(self):
+        self.go_to_working_pose()
+        time.sleep(5.0)
+        self.realsense.get_frame()
+        self.mrk_detector.detect()
+        i = 0
+        while not self.starting_short_coordinates[i].active:
+            i = i + 1
+            if i == 4:
+                print("Non e' stato rilevato un pezzo corto conforme")
+                sys.exit()
+        return i
+
+    # Funzioni che controllano se i pezzi presenti sono sufficienti per comporre le varie figure
+    def initial_tower_check(self):
+        time.sleep(5.0)
+        self.realsense.get_frame()
+        self.mrk_detector.detect()
+        j = 0
+        for i in range(0, 4):
+            if self.starting_short_coordinates[i].active:
+                j = j + 1
+
+        if j < 4:
+            print("Pezzi corti insufficienti")
+            sys.exit()
+
+    def initial_rectangle_check(self):
+        time.sleep(5.0)
+        self.realsense.get_frame()
+        self.mrk_detector.detect()
+        j = 0
+        for i in range(0, 6):
+            if self.starting_long_coordinates[i].active:
+                j = j + 1
+        if j < 2:
+            print("Pezzi lunghi insufficienti")
+            sys.exit()
+
+    def initial_square_check(self):
+        time.sleep(5.0)
+        self.realsense.get_frame()
+        self.mrk_detector.detect()
+        j = 0
+        for i in range(0, 6):
+            if self.starting_long_coordinates[i].active:
+                print j
+                j = j + 1
+        if j < 4:
+            print("Pezzi lunghi insufficienti")
+            sys.exit()
+            
     # Seguono le funzioni per costruire le figure. Regola generale: prima e dopo iniziare la costruzione, il braccio si
     # porta nella sua "working position"
 
     # Funzione per far costruire la torre al braccio robotico
     def build_tower(self):
-        self.go_to_working_pose()
+        #self.go_to_working_pose()
+        self.initial_tower_check()
 
         # Piazzo i 4 blocchi, ogni volta alzando l'altezza di cui si ritira il braccio
-        self.pick(self.starting_short_coordinates[0], "SMALL")
+        i = self.find_suitable_short_piece()
+
+        self.pick(self.starting_short_coordinates[i], "SMALL")
         self.place(self.place_short_coordinates[0], "SMALL", 0)
         if self.up_offset == 0.0314:
             self.up_offset += self.lego_height
 
-        self.pick(self.starting_short_coordinates[1], "SMALL")
+        i = self.find_suitable_short_piece()
+
+        self.pick(self.starting_short_coordinates[i], "SMALL")
         self.place(self.place_short_coordinates[0], "SMALL", self.lego_height)
         self.up_offset += self.lego_height
 
-        self.pick(self.starting_short_coordinates[2], "SMALL")
+        i = self.find_suitable_short_piece()
+
+        self.pick(self.starting_short_coordinates[i], "SMALL")
         self.place(self.place_short_coordinates[0], "SMALL", 2 * self.lego_height)
         self.up_offset += self.lego_height
 
-        self.pick(self.starting_short_coordinates[3], "SMALL")
+        i = self.find_suitable_short_piece()
+
+        self.pick(self.starting_short_coordinates[i], "SMALL")
         self.place(self.place_short_coordinates[0], "SMALL", 3 * self.lego_height)
         self.up_offset += self.lego_height
 
@@ -344,48 +436,49 @@ class Robot:
 
     # Funzione per far costruire il rettangolo al braccio robotico
     def build_rectangle(self):
-        self.go_to_working_pose()
+        #self.go_to_working_pose()
+        self.initial_rectangle_check()
+
+        i = self.find_suitable_long_piece()
 
         # Piazzo i 2 blocchi. Per ragioni sperimentali, risulta piu' comodo piazzare prima il pezzo piu' in fondo
-        self.pick(self.starting_long_coordinates[0], "LONG")
+        self.pick(self.starting_long_coordinates[i], "LONG")
         self.place(self.place_long_coordinates[1], "LONG", 0)
 
-        self.pick(self.starting_long_coordinates[1], "LONG")
+        i = self.find_suitable_long_piece()
+
+        self.pick(self.starting_long_coordinates[i], "LONG")
         self.place(self.place_long_coordinates[0], "LONG", 0)
 
         self.go_to_working_pose()
 
     # Funzione per far costruire il rettangolo al braccio robotico
     def build_square(self):
-        self.go_to_working_pose()
+        #self.go_to_working_pose()
+        self.initial_square_check()
+
+        i = self.find_suitable_long_piece()
 
         # Piazzo i 4 blocchi. Per ragioni sperimentali, risulta piu' comodo piazzare prima il pezzo piu' in fondo
-        self.pick(self.starting_long_coordinates[2], "LONG")
+        self.pick(self.starting_long_coordinates[i], "LONG")
         self.place(self.place_long_coordinates[3], "LONG", 0)
 
-        self.pick(self.starting_long_coordinates[3], "LONG")
+        i = self.find_suitable_long_piece()
+
+        self.pick(self.starting_long_coordinates[i], "LONG")
         self.place(self.place_long_coordinates[2], "LONG", 0)
 
-        if self.up_offset == 0.0314:  # Se l'offset era gia' stato modificato da un'altra funzione, lo tengo invariato
+        if self.up_offset == 0.0314:  # Alzo l'offset solo se non era gia' stato alzato
             self.up_offset += self.lego_height
+
+        i = self.find_suitable_long_piece()
 
         self.pick(self.starting_long_coordinates[4], "LONG")
         self.place(self.place_long_coordinates[3], "LONG", self.lego_height)
+
+        i = self.find_suitable_long_piece()
 
         self.pick(self.starting_long_coordinates[5], "LONG")
         self.place(self.place_long_coordinates[2], "LONG", self.lego_height)
 
         self.go_to_working_pose()
-
-"""
-robot.build_tower()
-robot.build_rectangle()
-robot.build_square()
-robot.pick(robot.starting_long_coordinates[0], "LONG")
-robot.place(robot.place_long_coordinates[1], "LONG", 0)
-"""
-robot = Robot()
-robot.init_coordinates()
-robot.go_to_working_pose()
-robot.build_square()
-robot.go_to_working_pose()
