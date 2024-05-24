@@ -20,6 +20,8 @@ class ShapeRecognition:
                 self.numer_of_shapes):  # Ogni forma ha associato un contatore che misura per quanti frame e' stata
             self.frame_counter[i] = 0  # riconosciuta. Tutti i contatori sono inizializzati a 0
         self.font = cv2.FONT_ITALIC
+        self.lower_red = (70, 160, 30)  # Valori ricavati sperimentalmente
+        self.upper_red = (180, 255, 243)
 
     # Funzione principale, avvia la webcam e la versione mascherata, termina solo quando l'utente preme esc
     def start_recognition(self):
@@ -47,11 +49,11 @@ class ShapeRecognition:
             upper_red = np.array([u_h, u_s, u_v])
             """
 
-            lower_red = (70, 160, 30)  # Valori ricavati sperimentalmente
-            upper_red = (180, 255, 243)
+            #lower_red = (70, 160, 30)  # Valori ricavati sperimentalmente
+            #upper_red = (180, 255, 243)
 
             # Creazione maschera
-            mask = cv2.inRange(hsv, lower_red, upper_red)
+            mask = cv2.inRange(hsv, self.lower_red, self.upper_red)
             kernel = np.ones((5, 5), np.uint8)
             mask = cv2.erode(mask, kernel)
 
