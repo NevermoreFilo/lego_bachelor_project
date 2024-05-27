@@ -248,14 +248,14 @@ class Robot:
         return client.get_result()
 
     # Funzione per prendere il pezzo. Il parametro coordinate e' di tipo Coordinate ed indica il punto in cui
-    # prendere. Il parametro pieceType dev'essere una stringa che indica il tipo di pezzo da prendere(SMALL o LONG)
-    def pick(self, coordinate, pieceType):
+    # prendere. Il parametro piece_type dev'essere una stringa che indica il tipo di pezzo da prendere(SMALL o LONG)
+    def pick(self, coordinate, piece_type):
         waypoints = []
         self.pre_grasp_rotation()
         self.starting_open_gripper()
-        if pieceType == "SMALL":
+        if piece_type == "SMALL":
             width = "NARROW"
-        elif pieceType == "LONG":
+        elif piece_type == "LONG":
             width = "WIDE"
         else:
             return "Error, incorrect piece type. Use \"SMALL\" or \"LONG\""
@@ -300,7 +300,7 @@ class Robot:
         self.upward_retreat()
 
     # Funzione per piazzare il pezzo. Il parametro coordinate e' di tipo Coordinate ed indica il punto in cui
-    # piazzare. Il parametro pieceType dev'essere una stringa che indica il tipo di pezzo da piazzare(SMALL o LONG)
+    # piazzare. Il parametro piece_type dev'essere una stringa che indica il tipo di pezzo da piazzare(SMALL o LONG)
     # Il parametro z_offset indica di quanto bisogna alzarsi rispetto alla coordinata originale
     def place(self, coordinate, piece_type, z_offset):
         if piece_type == "SMALL":
